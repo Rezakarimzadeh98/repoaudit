@@ -1,6 +1,6 @@
 {
   "name": "repoaudit",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Score any Git repo for open-source readiness — docs, license, security, CI, packaging, community — then fix gaps in one command.",
   "bin": {
     "repoaudit": "bin/repoaudit.js"
