@@ -21,9 +21,9 @@ runs:
   using: "composite"
   steps:
     - name: Setup Node
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
-        node-version: "20"
+        node-version: "22"
     - name: Build repoaudit
       shell: bash
       working-directory: ${{ github.action_path }}
