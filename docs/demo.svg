@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360" viewBox="0 0 760 360" role="img" aria-label="repoaudit demo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <rect x="24" y="24" width="712" height="312" rx="16"/>
+    </clipPath>
+  </defs>
+  <rect width="760" height="360" rx="22" fill="url(#bg)"/>
+  <rect x="24" y="24" width="712" height="312" rx="16" fill="#020617" stroke="#1f2937"/>
+  <circle cx="52" cy="52" r="6" fill="#f87171"/>
+  <circle cx="74" cy="52" r="6" fill="#fbbf24"/>
+  <circle cx="96" cy="52" r="6" fill="#34d399"/>
+  <text x="120" y="57" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">repoaudit .</text>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#e5e7eb" clip-path="url(#clip)">
+    <text x="48" y="96" fill="#93c5fd">repoaudit</text>
+    <text x="48" y="120" fill="#94a3b8">path   ./my-project</text>
+    <text x="48" y="144">score  <tspan fill="#4ade80" font-weight="700">91/100</tspan>  grade <tspan fill="#4ade80" font-weight="700">A</tspan></text>
+
+    <g transform="translate(48,170)">
+      <text y="0" fill="#cbd5e1">Docs</text>
+      <rect x="110" y="-12" width="220" height="14" rx="4" fill="#1f2937"/>
+      <rect x="110" y="-12" width="0" height="14" rx="4" fill="#22c55e">
+        <animate attributeName="width" values="0;220" dur="1.2s" fill="freeze" begin="0.2s"/>
+      </rect>
+      <text x="344" y="0" fill="#86efac">100</text>
+
+      <text y="28" fill="#cbd5e1">Security</text>
+      <rect x="110" y="16" width="220" height="14" rx="4" fill="#1f2937"/>
+      <rect x="110" y="16" width="0" height="14" rx="4" fill="#22c55e">
+        <animate attributeName="width" values="0;202" dur="1.2s" fill="freeze" begin="0.45s"/>
+      </rect>
+      <text x="344" y="28" fill="#86efac">92</text>
+
+      <text y="56" fill="#cbd5e1">CI</text>
+      <rect x="110" y="44" width="220" height="14" rx="4" fill="#1f2937"/>
+      <rect x="110" y="44" width="0" height="14" rx="4" fill="#eab308">
+        <animate attributeName="width" values="0;176" dur="1.2s" fill="freeze" begin="0.7s"/>
+      </rect>
+      <text x="344" y="56" fill="#fde047">80</text>
+
+      <text y="84" fill="#cbd5e1">Community</text>
+      <rect x="110" y="72" width="220" height="14" rx="4" fill="#1f2937"/>
+      <rect x="110" y="72" width="0" height="14" rx="4" fill="#22c55e">
+        <animate attributeName="width" values="0;187" dur="1.2s" fill="freeze" begin="0.95s"/>
+      </rect>
+      <text x="344" y="84" fill="#86efac">85</text>
+    </g>
+
+    <text x="48" y="290" fill="#4ade80" opacity="0">
+      Ship-ready. This repo looks public-friendly.
+      <animate attributeName="opacity" values="0;1" dur="0.4s" fill="freeze" begin="1.5s"/>
+    </text>
+    <text x="48" y="314" fill="#64748b" opacity="0">
+      Tip: repoaudit fix . scaffolds missing files
+      <animate attributeName="opacity" values="0;1" dur="0.4s" fill="freeze" begin="1.9s"/>
+    </text>
+  </g>
+</svg>

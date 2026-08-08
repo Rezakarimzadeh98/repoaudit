@@ -11,6 +11,16 @@ Publishing a repo is easy. Making it look trustworthy is not.
 
 `repoaudit` gives you a **0–100 readiness score**, a letter grade, and actionable findings across docs, license, security, CI, packaging, and community hygiene. Use it before you go public, in PR checks, or when reviewing someone else's project.
 
+### Live demo
+
+![repoaudit demo](docs/demo.svg)
+
+```bash
+repoaudit .          # score your repo
+repoaudit fix .      # scaffold missing LICENSE/CI/SECURITY/templates
+repoaudit badge .    # print a shields.io badge
+```
+
 ## Why people use it
 
 | Problem | What repoaudit does |
@@ -141,6 +151,16 @@ Exit codes:
 2. **PR quality bot** — fail CI when someone removes LICENSE/tests or commits `.env`  
 3. **Open-source review** — clone a dependency and get a readiness snapshot in seconds  
 4. **Portfolio polish** — raise your own repos from “code dump” to “cloneable product”
+
+## Contribute
+
+Want to make this sharper? Start here:
+
+- Open issues labeled [**good first issue**](https://github.com/Rezakarimzadeh98/repoaudit/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+- Read [CONTRIBUTING.md](CONTRIBUTING.md)
+- Easy wins: new checks, fewer false positives, Python/Go packaging, config file support
+
+Every check is intentionally small — one focused PR can land in a single sitting.
 
 ## Development
 
