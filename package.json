@@ -1,0 +1,53 @@
+{
+  "name": "repoaudit",
+  "version": "1.0.0",
+  "description": "Audit a Git repository for open-source readiness: docs, license, CI, security hygiene, and release basics.",
+  "bin": {
+    "repoaudit": "bin/repoaudit.js"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "node --import tsx src/cli.ts",
+    "start": "node bin/repoaudit.js",
+    "test": "node --import tsx --test tests/**/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "cli",
+    "repository",
+    "audit",
+    "open-source",
+    "checklist",
+    "security",
+    "readme",
+    "license",
+    "ci",
+    "devtools"
+  ],
+  "author": "Reza Karimzadeh <https://github.com/Rezakarimzadeh98>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rezakarimzadeh98/repoaudit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Rezakarimzadeh98/repoaudit/issues"
+  },
+  "homepage": "https://github.com/Rezakarimzadeh98/repoaudit#readme",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
