@@ -3,11 +3,7 @@ import type { CheckResult } from "../types.js";
 import { exists, listFiles, readText } from "../fs.js";
 
 const SECRET_PATTERNS: Array<{ id: string; label: string; re: RegExp }> = [
-  {
-    id: "aws",
-    label: "AWS access key",
-    re: /AKIA[0-9A-Z]{16}/,
-  },
+  { id: "aws", label: "AWS access key", re: /AKIA[0-9A-Z]{16}/ },
   {
     id: "private_key",
     label: "Private key block",
@@ -17,6 +13,11 @@ const SECRET_PATTERNS: Array<{ id: string; label: string; re: RegExp }> = [
     id: "generic_token",
     label: "Hard-coded token assignment",
     re: /(?:api[_-]?key|secret|token|password)\s*[:=]\s*['"][^'"]{12,}['"]/i,
+  },
+  {
+    id: "github_pat",
+    label: "GitHub token-like string",
+    re: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b/,
   },
 ];
 
@@ -38,56 +39,67 @@ export async function checkSecurity(root: string): Promise<CheckResult[]> {
     RISKY_NAMES.some((name) => f === name || f.endsWith(`/${name}`)),
   );
 
-  if (riskyPresent.length > 0) {
-    results.push({
-      id: "security.sensitive_files",
-      title: "Sensitive files",
-      severity: "fail",
-      message: `Possibly sensitive files tracked in the tree: ${riskyPresent.slice(0, 5).join(", ")}`,
-      hint: "Remove secrets from the repo and add them to .gitignore.",
-    });
-  } else {
-    results.push({
-      id: "security.sensitive_files",
-      title: "Sensitive files",
-      severity: "pass",
-      message: "No common sensitive filenames found in the working tree scan.",
-    });
-  }
+  results.push({
+    id: "security.sensitive_files",
+    category: "security",
+    title: "Sensitive files",
+    severity: riskyPresent.length > 0 ? "fail" : "pass",
+    weight: 3,
+    message:
+      riskyPresent.length > 0
+        ? `Possibly sensitive files in the tree: ${riskyPresent.slice(0, 5).join(", ")}`
+        : "No common sensitive filenames found in the working tree scan.",
+    hint:
+      riskyPresent.length > 0
+        ? "Remove secrets from the repo and add them to .gitignore."
+        : undefined,
+  });
 
   const gitignore = await readText(path.join(root, ".gitignore"));
   if (!gitignore) {
     results.push({
       id: "security.gitignore",
+      category: "security",
       title: ".gitignore",
       severity: "warn",
+      weight: 2,
       message: "No .gitignore file found.",
       hint: "Add .gitignore rules for .env, build output, and editor files.",
     });
   } else if (!/\.env/i.test(gitignore)) {
     results.push({
       id: "security.gitignore",
+      category: "security",
       title: ".gitignore",
       severity: "warn",
+      weight: 2,
       message: ".gitignore exists but does not mention .env files.",
       hint: "Add `.env` and `.env.*` to reduce accidental secret commits.",
     });
   } else {
     results.push({
       id: "security.gitignore",
+      category: "security",
       title: ".gitignore",
       severity: "pass",
+      weight: 2,
       message: ".gitignore includes env-related rules.",
     });
   }
 
   const scanTargets = files.filter((f) =>
-    /\.(ts|tsx|js|jsx|py|go|env|yml|yaml|json|toml|ini|sh|ps1)$/i.test(f),
+    /\.(ts|tsx|js|jsx|py|go|env|yml|yaml|json|toml|ini|sh|ps1|rb|php|java|cs)$/i.test(
+      f,
+    ),
   );
 
   const findings: string[] = [];
-  for (const rel of scanTargets.slice(0, 400)) {
-    if (rel.includes("package-lock.json") || rel.includes("pnpm-lock.yaml")) {
+  for (const rel of scanTargets.slice(0, 500)) {
+    if (
+      rel.includes("package-lock.json") ||
+      rel.includes("pnpm-lock.yaml") ||
+      rel.includes("yarn.lock")
+    ) {
       continue;
     }
     const text = await readText(path.join(root, rel));
@@ -99,40 +111,51 @@ export async function checkSecurity(root: string): Promise<CheckResult[]> {
     }
   }
 
-  if (findings.length > 0) {
-    results.push({
-      id: "security.secret_patterns",
-      title: "Secret patterns",
-      severity: "fail",
-      message: `Possible secrets detected: ${findings.slice(0, 5).join("; ")}`,
-      hint: "Rotate exposed credentials and remove them from history if needed.",
-    });
-  } else {
-    results.push({
-      id: "security.secret_patterns",
-      title: "Secret patterns",
-      severity: "pass",
-      message: "No high-confidence secret patterns detected in scanned files.",
-    });
-  }
+  results.push({
+    id: "security.secret_patterns",
+    category: "security",
+    title: "Secret patterns",
+    severity: findings.length > 0 ? "fail" : "pass",
+    weight: 3,
+    message:
+      findings.length > 0
+        ? `Possible secrets detected: ${findings.slice(0, 5).join("; ")}`
+        : "No high-confidence secret patterns detected in scanned files.",
+    hint:
+      findings.length > 0
+        ? "Rotate exposed credentials and remove them from history if needed."
+        : undefined,
+  });
 
-  const securityMd = path.join(root, "SECURITY.md");
-  results.push(
-    (await exists(securityMd))
-      ? {
-          id: "security.policy",
-          title: "Security policy",
-          severity: "pass",
-          message: "SECURITY.md is present.",
-        }
-      : {
-          id: "security.policy",
-          title: "Security policy",
-          severity: "info",
-          message: "No SECURITY.md found.",
-          hint: "Optional file that tells people how to report vulnerabilities.",
-        },
-  );
+  results.push({
+    id: "security.policy",
+    category: "security",
+    title: "Security policy",
+    severity: (await exists(path.join(root, "SECURITY.md"))) ? "pass" : "info",
+    weight: 1,
+    message: (await exists(path.join(root, "SECURITY.md")))
+      ? "SECURITY.md is present."
+      : "No SECURITY.md found.",
+    hint: (await exists(path.join(root, "SECURITY.md")))
+      ? undefined
+      : "Optional file that tells people how to report vulnerabilities.",
+  });
+
+  const dependabot =
+    (await exists(path.join(root, ".github", "dependabot.yml"))) ||
+    (await exists(path.join(root, ".github", "dependabot.yaml")));
+  results.push({
+    id: "security.dependabot",
+    category: "security",
+    title: "Dependency updates",
+    severity: dependabot ? "pass" : "info",
+    message: dependabot
+      ? "Dependabot config found."
+      : "No Dependabot/Renovate config found.",
+    hint: dependabot
+      ? undefined
+      : "Automating dependency updates reduces security debt.",
+  });
 
   return results;
 }

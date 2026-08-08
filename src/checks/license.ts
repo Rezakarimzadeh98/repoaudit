@@ -16,8 +16,10 @@ export async function checkLicense(root: string): Promise<CheckResult[]> {
     return [
       {
         id: "license.file",
+        category: "license",
         title: "License file",
         severity: "fail",
+        weight: 3,
         message: "No LICENSE file found.",
         hint: "Add an OSI-approved license (MIT, Apache-2.0, etc.) in the repository root.",
       },
@@ -26,11 +28,17 @@ export async function checkLicense(root: string): Promise<CheckResult[]> {
 
   const text = ((await readText(licensePath)) ?? "").toLowerCase();
   let kind = "unknown";
-  if (text.includes("mit license") || text.includes("permission is hereby granted, free of charge")) {
+  if (
+    text.includes("mit license") ||
+    text.includes("permission is hereby granted, free of charge")
+  ) {
     kind = "MIT";
   } else if (text.includes("apache license") && text.includes("version 2.0")) {
     kind = "Apache-2.0";
-  } else if (text.includes("gnu general public license") && text.includes("version 3")) {
+  } else if (
+    text.includes("gnu general public license") &&
+    text.includes("version 3")
+  ) {
     kind = "GPL-3.0";
   } else if (text.includes("bsd 3-clause")) {
     kind = "BSD-3-Clause";
@@ -39,8 +47,10 @@ export async function checkLicense(root: string): Promise<CheckResult[]> {
   return [
     {
       id: "license.file",
+      category: "license",
       title: "License file",
       severity: "pass",
+      weight: 3,
       message:
         kind === "unknown"
           ? `Found ${path.basename(licensePath)}.`

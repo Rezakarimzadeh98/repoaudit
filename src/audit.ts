@@ -1,9 +1,12 @@
-import type { AuditOptions, CheckResult } from "./types.js";
+import type { AuditOptions, CheckResult, Grade } from "./types.js";
+import type { CategoryScore } from "./types.js";
 import { checkDocs } from "./checks/docs.js";
 import { checkLicense } from "./checks/license.js";
 import { checkSecurity } from "./checks/security.js";
 import { checkCi } from "./checks/ci.js";
-import { checkMetadata } from "./checks/metadata.js";
+import { checkPackaging } from "./checks/packaging.js";
+import { checkCommunity } from "./checks/community.js";
+import { scoreResults } from "./score.js";
 
 export interface AuditReport {
   root: string;
@@ -14,6 +17,9 @@ export interface AuditReport {
     fail: number;
     info: number;
   };
+  score: number;
+  grade: Grade;
+  categories: CategoryScore[];
 }
 
 export async function runAudit(options: AuditOptions): Promise<AuditReport> {
@@ -22,7 +28,8 @@ export async function runAudit(options: AuditOptions): Promise<AuditReport> {
     checkLicense(options.root),
     checkSecurity(options.root),
     checkCi(options.root),
-    checkMetadata(options.root),
+    checkPackaging(options.root),
+    checkCommunity(options.root),
   ]);
 
   const results = groups.flat();
@@ -32,8 +39,16 @@ export async function runAudit(options: AuditOptions): Promise<AuditReport> {
     fail: results.filter((r) => r.severity === "fail").length,
     info: results.filter((r) => r.severity === "info").length,
   };
+  const scored = scoreResults(results);
 
-  return { root: options.root, results, summary };
+  return {
+    root: options.root,
+    results,
+    summary,
+    score: scored.score,
+    grade: scored.grade,
+    categories: scored.categories,
+  };
 }
 
 export function exitCodeFor(report: AuditReport, strict: boolean): number {
