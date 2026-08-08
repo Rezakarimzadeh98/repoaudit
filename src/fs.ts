@@ -1,4 +1,4 @@
-import { access, readFile, readdir, stat } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export async function exists(filePath: string): Promise<boolean> {
@@ -46,7 +46,10 @@ export async function listFiles(root: string): Promise<string[]> {
         entry.name === ".git" ||
         entry.name === "dist" ||
         entry.name === "coverage" ||
-        entry.name === ".next"
+        entry.name === ".next" ||
+        entry.name === "build" ||
+        entry.name === "vendor" ||
+        entry.name === "__pycache__"
       ) {
         continue;
       }
@@ -64,4 +67,14 @@ export async function listFiles(root: string): Promise<string[]> {
   if (!rootStat?.isDirectory()) return out;
   await walk(root);
   return out;
+}
+
+export async function writeIfMissing(
+  filePath: string,
+  content: string,
+): Promise<boolean> {
+  if (await exists(filePath)) return false;
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, content, "utf8");
+  return true;
 }

@@ -1,36 +1,43 @@
 {
   "name": "repoaudit",
-  "version": "1.0.0",
-  "description": "Audit a Git repository for open-source readiness: docs, license, CI, security hygiene, and release basics.",
+  "version": "2.0.0",
+  "description": "Score any Git repo for open-source readiness — docs, license, security, CI, packaging, community — then fix gaps in one command.",
   "bin": {
     "repoaudit": "bin/repoaudit.js"
   },
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
     "bin",
     "dist",
+    "action.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc",
     "dev": "node --import tsx src/cli.ts",
     "start": "node bin/repoaudit.js",
     "test": "node --import tsx --test tests/**/*.test.ts",
+    "audit:self": "node bin/repoaudit.js . --no-color",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
     "cli",
     "repository",
     "audit",
+    "score",
     "open-source",
     "checklist",
     "security",
     "readme",
     "license",
     "ci",
-    "devtools"
+    "github-actions",
+    "devtools",
+    "repo-hygiene"
   ],
   "author": "Reza Karimzadeh <https://github.com/Rezakarimzadeh98>",
   "repository": {

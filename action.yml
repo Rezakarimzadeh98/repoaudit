@@ -1,0 +1,43 @@
+name: "repoaudit"
+description: "Score a repository for open-source readiness and fail on critical gaps."
+author: "Reza Karimzadeh"
+branding:
+  icon: "shield"
+  color: "green"
+inputs:
+  path:
+    description: "Path to audit"
+    required: false
+    default: "."
+  strict:
+    description: "Treat warnings as failures"
+    required: false
+    default: "false"
+  markdown:
+    description: "Write a markdown report to GITHUB_STEP_SUMMARY"
+    required: false
+    default: "true"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+    - name: Build repoaudit
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        npm ci
+        npm run build
+    - name: Run repoaudit
+      shell: bash
+      run: |
+        CMD=(node "${{ github.action_path }}/bin/repoaudit.js" "${{ inputs.path }}" --no-color)
+        if [ "${{ inputs.strict }}" = "true" ]; then
+          CMD+=(--strict)
+        fi
+        if [ "${{ inputs.markdown }}" = "true" ]; then
+          node "${{ github.action_path }}/bin/repoaudit.js" "${{ inputs.path }}" --md >> "$GITHUB_STEP_SUMMARY"
+        fi
+        "${CMD[@]}"

@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { CheckResult } from "../types.js";
-import { exists, findFirst, readText } from "../fs.js";
+import { findFirst, readText } from "../fs.js";
 
 export async function checkDocs(root: string): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
@@ -16,133 +16,87 @@ export async function checkDocs(root: string): Promise<CheckResult[]> {
   if (!readme) {
     results.push({
       id: "docs.readme",
+      category: "docs",
       title: "README",
       severity: "fail",
+      weight: 3,
       message: "No README file found in the repository root.",
       hint: "Add README.md with install steps, usage, and a short project pitch.",
     });
-  } else {
-    const text = (await readText(readme)) ?? "";
-    const lines = text
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter(Boolean);
-
-    if (lines.length < 8) {
-      results.push({
-        id: "docs.readme",
-        title: "README",
-        severity: "warn",
-        message: `Found ${path.basename(readme)}, but it looks too short.`,
-        hint: "Expand it with install, usage examples, and contribution notes.",
-      });
-    } else {
-      results.push({
-        id: "docs.readme",
-        title: "README",
-        severity: "pass",
-        message: `Found ${path.basename(readme)}.`,
-      });
-    }
-
-    const lower = text.toLowerCase();
-    if (!/(install|usage|getting started|quick start)/i.test(lower)) {
-      results.push({
-        id: "docs.readme.usage",
-        title: "README usage section",
-        severity: "warn",
-        message: "README does not clearly describe install/usage.",
-        hint: "Add a short Install and Usage section with copy-pasteable commands.",
-      });
-    } else {
-      results.push({
-        id: "docs.readme.usage",
-        title: "README usage section",
-        severity: "pass",
-        message: "README includes install/usage guidance.",
-      });
-    }
+    return results;
   }
 
-  const contributing = await findFirst(root, [
-    "CONTRIBUTING.md",
-    "docs/CONTRIBUTING.md",
-    ".github/CONTRIBUTING.md",
-  ]);
-  results.push(
-    contributing
-      ? {
-          id: "docs.contributing",
-          title: "Contributing guide",
-          severity: "pass",
-          message: `Found ${path.relative(root, contributing).replaceAll("\\", "/")}.`,
-        }
-      : {
-          id: "docs.contributing",
-          title: "Contributing guide",
-          severity: "info",
-          message: "No CONTRIBUTING.md found.",
-          hint: "Optional, but useful if you want pull requests from others.",
-        },
-  );
+  const text = (await readText(readme)) ?? "";
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
 
-  const codeOfConduct = await findFirst(root, [
-    "CODE_OF_CONDUCT.md",
-    ".github/CODE_OF_CONDUCT.md",
-  ]);
-  results.push(
-    codeOfConduct
-      ? {
-          id: "docs.code_of_conduct",
-          title: "Code of conduct",
-          severity: "pass",
-          message: "Code of conduct is present.",
-        }
-      : {
-          id: "docs.code_of_conduct",
-          title: "Code of conduct",
-          severity: "info",
-          message: "No CODE_OF_CONDUCT.md found.",
-        },
-  );
+  results.push({
+    id: "docs.readme",
+    category: "docs",
+    title: "README",
+    severity: lines.length < 10 ? "warn" : "pass",
+    weight: 3,
+    message:
+      lines.length < 10
+        ? `Found ${path.basename(readme)}, but it looks too short.`
+        : `Found ${path.basename(readme)}.`,
+    hint:
+      lines.length < 10
+        ? "Expand it with install, usage examples, and contribution notes."
+        : undefined,
+  });
 
-  const changelog = await findFirst(root, [
-    "CHANGELOG.md",
-    "CHANGES.md",
-    "HISTORY.md",
-  ]);
-  results.push(
-    changelog
-      ? {
-          id: "docs.changelog",
-          title: "Changelog",
-          severity: "pass",
-          message: `Found ${path.basename(changelog)}.`,
-        }
-      : {
-          id: "docs.changelog",
-          title: "Changelog",
-          severity: "info",
-          message: "No changelog file found.",
-          hint: "A CHANGELOG.md helps users track releases.",
-        },
+  const lower = text.toLowerCase();
+  const hasUsage = /(install|usage|getting started|quick start|how to use)/i.test(
+    lower,
   );
+  results.push({
+    id: "docs.readme.usage",
+    category: "docs",
+    title: "Install / usage docs",
+    severity: hasUsage ? "pass" : "warn",
+    weight: 2,
+    message: hasUsage
+      ? "README includes install/usage guidance."
+      : "README does not clearly describe install/usage.",
+    hint: hasUsage
+      ? undefined
+      : "Add Install and Usage sections with copy-pasteable commands.",
+  });
 
-  if (await exists(path.join(root, ".github", "ISSUE_TEMPLATE"))) {
-    results.push({
-      id: "docs.issue_templates",
-      title: "Issue templates",
-      severity: "pass",
-      message: "Issue templates directory exists.",
-    });
-  } else {
-    results.push({
-      id: "docs.issue_templates",
-      title: "Issue templates",
-      severity: "info",
-      message: "No .github/ISSUE_TEMPLATE directory found.",
-    });
-  }
+  const hasDemo =
+    /```/.test(text) ||
+    /!\[/.test(text) ||
+    /screenshot|demo|example/i.test(text);
+  results.push({
+    id: "docs.readme.demo",
+    category: "docs",
+    title: "Demo / examples",
+    severity: hasDemo ? "pass" : "warn",
+    weight: 1,
+    message: hasDemo
+      ? "README includes code examples or visuals."
+      : "README has no obvious demo, screenshot, or code sample.",
+    hint: hasDemo
+      ? undefined
+      : "Add a short demo command block or screenshot — it boosts adoption.",
+  });
+
+  const hasBadges = /shields\.io|badge|img\.shields/i.test(text);
+  results.push({
+    id: "docs.readme.badges",
+    category: "docs",
+    title: "Status badges",
+    severity: hasBadges ? "pass" : "info",
+    message: hasBadges
+      ? "README includes status badges."
+      : "No status badges detected.",
+    hint: hasBadges
+      ? undefined
+      : "Badges for CI, license, and npm make the project look maintained.",
+  });
 
   return results;
 }

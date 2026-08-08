@@ -1,84 +1,158 @@
 # repoaudit
 
-Audit a Git repository for open-source readiness before you publish it.
+**Score any Git repository for open-source readiness — then fix the gaps.**
 
-`repoaudit` checks the boring-but-important parts of a public repo: README quality, license, CI, tests, `.gitignore`, and common secret leaks. Use it on your own projects or as a quick review pass on someone else's tree.
+[![CI](https://github.com/Rezakarimzadeh98/repoaudit/actions/workflows/ci.yml/badge.svg)](https://github.com/Rezakarimzadeh98/repoaudit/actions/workflows/ci.yml)
+[![repoaudit](https://img.shields.io/badge/repoaudit-100%25%20A-2ea44f)](https://github.com/Rezakarimzadeh98/repoaudit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 
-## Install
+Publishing a repo is easy. Making it look trustworthy is not.
+
+`repoaudit` gives you a **0–100 readiness score**, a letter grade, and actionable findings across docs, license, security, CI, packaging, and community hygiene. Use it before you go public, in PR checks, or when reviewing someone else's project.
+
+## Why people use it
+
+| Problem | What repoaudit does |
+|--------|----------------------|
+| Forgot LICENSE / README / CI | Surfaces hard failures before the first clone |
+| Accidental `.env` or tokens | Scans common secret patterns and sensitive filenames |
+| "Is this repo contribution-ready?" | Scores templates, CONTRIBUTING, Dependabot, lockfiles |
+| Manual checklist every time | One command + optional auto-fix |
+
+## Quick start
 
 ```bash
-npm install -g repoaudit
+npm install -g github:Rezakarimzadeh98/repoaudit
+repoaudit .
 ```
 
-Or run once without installing:
+One-shot without global install:
 
 ```bash
-npx repoaudit .
-```
-
-## Usage
-
-```bash
-# audit the current directory
-repoaudit
-
-# audit another path
-repoaudit ./my-project
-
-# fail on warnings too
-repoaudit . --strict
-
-# machine-readable output
-repoaudit . --json
+npx --yes github:Rezakarimzadeh98/repoaudit
 ```
 
 ### Sample output
 
 ```text
-RepoAudit — /path/to/project
-================================================
+repoaudit
+path   ./my-project
+score  91/100  grade A
+
+Docs         100  ████████████████████
+License      100  ████████████████████
+Security      92  ██████████████████░░
+CI & Tests    88  █████████████████░░░
+Packaging     90  ██████████████████░░
+Community     85  █████████████████░░░
+
+========================================================
 [PASS] README
        Found README.md.
-[PASS] License file
-       Found LICENSE (MIT).
-[WARN] CI workflows
-       No CI configuration detected.
-       hint: Add a simple GitHub Actions workflow for install/build/test.
-[FAIL] Sensitive files
-       Possibly sensitive files tracked in the tree: .env
-================================================
-Summary: 8 pass · 1 warn · 1 fail · 2 info
+[WARN] Dependency updates
+       No Dependabot/Renovate config found.
+       hint: Automating dependency updates reduces security debt.
+========================================================
+Summary: 18 pass · 1 warn · 0 fail · 3 info
+Ship-ready. This repo looks public-friendly.
+Tip: run `repoaudit fix .` to scaffold missing hygiene files.
 ```
+
+## Commands
+
+```bash
+# score the current repo
+repoaudit
+
+# score another path
+repoaudit ./services/api
+
+# markdown report (perfect for PR bodies / Actions job summaries)
+repoaudit . --md
+
+# JSON for scripts and bots
+repoaudit . --json
+
+# treat warnings as failures (CI gate)
+repoaudit . --strict
+
+# scaffold missing hygiene files (LICENSE, CI, SECURITY, templates, ...)
+repoaudit fix .
+
+# print a shields.io badge for your current score
+repoaudit badge .
+```
+
+### Auto-fix scaffolds
+
+`repoaudit fix` only creates **missing** files — it never overwrites:
+
+- `LICENSE` (MIT starter)
+- `.gitignore`
+- `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`
+- Issue + PR templates
+- GitHub Actions CI workflow
+- Dependabot config
+
+## GitHub Action
+
+Drop this into any repo:
+
+```yaml
+name: repoaudit
+on: [push, pull_request]
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Rezakarimzadeh98/repoaudit@main
+        with:
+          path: .
+          strict: "false"
+          markdown: "true"
+```
+
+The Action writes a markdown report into the job summary and fails the job on FAIL findings.
 
 ## What it checks
 
-| Area | Examples |
-|------|----------|
-| Docs | README presence/length, usage section, CONTRIBUTING, CODE_OF_CONDUCT |
-| License | LICENSE file detection (MIT, Apache-2.0, GPL-3.0, BSD-3-Clause) |
-| Security | `.env` / credential filenames, `.gitignore` rules, secret-like patterns |
-| CI & tests | GitHub Actions / other CI configs, test files |
-| Metadata | `package.json` description/license/keywords, EditorConfig |
+| Category | Examples |
+|----------|----------|
+| **Docs** | README quality, install/usage, demos, badges |
+| **License** | LICENSE detection (MIT, Apache-2.0, GPL-3.0, BSD-3-Clause) |
+| **Security** | `.env` / credential files, secret-like patterns, `.gitignore`, SECURITY.md, Dependabot |
+| **CI & Tests** | GitHub Actions / other CI, test files, `npm test` / lint scripts |
+| **Packaging** | description, license field, keywords, repository URL, lockfile, containers |
+| **Community** | CONTRIBUTING, Code of Conduct, changelog, issue/PR templates, funding |
 
 Exit codes:
 
-- `0` — no failures (warnings allowed unless `--strict`)
-- `1` — one or more failures (or warnings in strict mode)
-- `2` — unexpected runtime error
+| Code | Meaning |
+|-----:|---------|
+| 0 | No failures (warnings allowed unless `--strict`) |
+| 1 | One or more failures (or warnings in strict mode) |
+| 2 | Unexpected runtime error |
+
+## Use cases
+
+1. **Pre-publish gate** — run before making a private project public  
+2. **PR quality bot** — fail CI when someone removes LICENSE/tests or commits `.env`  
+3. **Open-source review** — clone a dependency and get a readiness snapshot in seconds  
+4. **Portfolio polish** — raise your own repos from “code dump” to “cloneable product”
 
 ## Development
 
 ```bash
+git clone https://github.com/Rezakarimzadeh98/repoaudit.git
+cd repoaudit
 npm install
-npm run build
 npm test
+npm run build
 node bin/repoaudit.js .
 ```
 
-## Why this exists
-
-Publishing a repo is easy. Making it look trustworthy is not. `repoaudit` is a fast local checklist so you catch missing docs, license gaps, and obvious secret mistakes before the first clone.
-
 ## License
 
-MIT
+MIT © [Reza Karimzadeh](https://github.com/Rezakarimzadeh98)
