@@ -1,4 +1,10 @@
-# Changelog
+﻿# Changelog
+
+## [2.0.1] - 2026-08-08
+
+### Changed
+- Aligned published package metadata with the v2.0.1 Action/runtime release
+- Kept Node 24-compatible GitHub Actions pin set as the supported baseline
 
 ## [2.0.0] - 2026-08-08
 
