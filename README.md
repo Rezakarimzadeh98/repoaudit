@@ -6,6 +6,12 @@
 [![repoaudit](https://img.shields.io/badge/repoaudit-100%25%20A-2ea44f)](https://github.com/Rezakarimzadeh98/repoaudit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Good First Issues](https://img.shields.io/github/issues-search/Rezakarimzadeh98/repoaudit?query=label%3A%22good%20first%20issue%22%20is%3Aopen&label=good%20first%20issues&color=7057ff)](https://github.com/Rezakarimzadeh98/repoaudit/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+
+<p align="center">
+  <img src="docs/social-preview.png" alt="repoaudit — score any Git repo before you go public" width="920" />
+</p>
 
 Publishing a repo is easy. Making it look trustworthy is not.
 

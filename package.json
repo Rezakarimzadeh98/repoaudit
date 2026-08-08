@@ -20,7 +20,7 @@
     "build": "tsc",
     "dev": "node --import tsx src/cli.ts",
     "start": "node bin/repoaudit.js",
-    "test": "node --import tsx --test tests/**/*.test.ts",
+    "test": "node scripts/run-tests.mjs",
     "audit:self": "node bin/repoaudit.js . --no-color",
     "prepublishOnly": "npm run build"
   },
