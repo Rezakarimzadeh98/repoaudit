@@ -98,3 +98,24 @@ test("fix scaffolds missing hygiene files", async () => {
   assert.ok(result.created.includes(".gitignore"));
   assert.ok(result.created.includes(".github/workflows/ci.yml"));
 });
+
+test("does not flag UI password copy as a secret", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "README.md"),
+    "# x\n\n## Install\n\na\n\n## Usage\n\nb\n\nc\n\nd\n",
+  );
+  await writeFile(
+    path.join(root, "LICENSE"),
+    "MIT License\npermission is hereby granted, free of charge\n",
+  );
+  await writeFile(path.join(root, ".gitignore"), ".env\n");
+  await writeFile(
+    path.join(root, "app.js"),
+    `console.error('Failed to copy password:', err);\nconst form = { password: '' };\n`,
+  );
+
+  const report = await runAudit({ root, ...opts });
+  const secrets = report.results.find((r) => r.id === "security.secret_patterns");
+  assert.equal(secrets?.severity, "pass");
+});
