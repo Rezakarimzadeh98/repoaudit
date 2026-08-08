@@ -10,16 +10,27 @@ const SECRET_PATTERNS: Array<{ id: string; label: string; re: RegExp }> = [
     re: /-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----/,
   },
   {
-    id: "generic_token",
-    label: "Hard-coded token assignment",
-    re: /(?:api[_-]?key|secret|token|password)\s*[:=]\s*['"][^'"]{12,}['"]/i,
-  },
-  {
     id: "github_pat",
     label: "GitHub token-like string",
     re: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b/,
   },
 ];
+
+const GENERIC_ASSIGNMENT =
+  /\b(?:api[_-]?key|secret|token|password)\b\s*[:=]\s*['"]([^'"]{12,})['"]/gi;
+
+const PLACEHOLDER_VALUE =
+  /^(your[_-]?|my[_-]?|example|sample|dummy|changeme|placeholder|xxx+|test|todo|password|secret|token)/i;
+
+function looksLikeHardcodedSecret(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length < 12) return false;
+  if (/\s/.test(trimmed)) return false; // UI copy / sentences
+  if (PLACEHOLDER_VALUE.test(trimmed)) return false;
+  if (/^\*+$/.test(trimmed)) return false;
+  // Prefer values that look credential-like, not plain words.
+  return /[0-9]/.test(trimmed) || /[^A-Za-z0-9]/.test(trimmed);
+}
 
 const RISKY_NAMES = [
   ".env",
@@ -98,7 +109,8 @@ export async function checkSecurity(root: string): Promise<CheckResult[]> {
     if (
       rel.includes("package-lock.json") ||
       rel.includes("pnpm-lock.yaml") ||
-      rel.includes("yarn.lock")
+      rel.includes("yarn.lock") ||
+      /(^|\/)(fixtures?|examples?|mocks?)\//i.test(rel)
     ) {
       continue;
     }
@@ -107,6 +119,14 @@ export async function checkSecurity(root: string): Promise<CheckResult[]> {
     for (const pattern of SECRET_PATTERNS) {
       if (pattern.re.test(text)) {
         findings.push(`${rel} (${pattern.label})`);
+      }
+    }
+    GENERIC_ASSIGNMENT.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = GENERIC_ASSIGNMENT.exec(text)) !== null) {
+      if (looksLikeHardcodedSecret(match[1] ?? "")) {
+        findings.push(`${rel} (Hard-coded token assignment)`);
+        break;
       }
     }
   }

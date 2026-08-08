@@ -158,6 +158,14 @@ Exit codes:
 3. **Open-source review** — clone a dependency and get a readiness snapshot in seconds  
 4. **Portfolio polish** — raise your own repos from “code dump” to “cloneable product”
 
+## Share / launch kit
+
+Ready-to-post copy for X, Reddit, Dev.to, and Show HN:
+
+- [`docs/SHARE.md`](docs/SHARE.md)
+
+If this saved you from publishing a half-ready repo, a star helps others find it.
+
 ## Contribute
 
 Want to make this sharper? Start here:
