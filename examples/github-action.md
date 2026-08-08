@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Rezakarimzadeh98/repoaudit@main
+      - uses: Rezakarimzadeh98/repoaudit@v2
         with:
           path: .
           strict: "true"

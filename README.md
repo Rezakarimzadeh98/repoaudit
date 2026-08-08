@@ -123,12 +123,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Rezakarimzadeh98/repoaudit@main
+      - uses: Rezakarimzadeh98/repoaudit@v2
         with:
           path: .
           strict: "false"
           markdown: "true"
 ```
+
+> Prefer `@v2` (or a full release tag) over `@main` so consumers stay on a stable Action release.
 
 The Action writes a markdown report into the job summary and fails the job on FAIL findings.
 
