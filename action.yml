@@ -1,5 +1,5 @@
-name: "repoaudit"
-description: "Score a repository for open-source readiness and fail on critical gaps."
+name: "Repo Readiness Audit"
+description: "Score a repository for open-source readiness (docs, license, security, CI, packaging, community) and fail on critical gaps."
 author: "Reza Karimzadeh"
 branding:
   icon: "shield"
@@ -10,11 +10,11 @@ inputs:
     required: false
     default: "."
   strict:
-    description: "Treat warnings as failures"
+    description: "Treat warnings as failures (exit code 1 on warnings)"
     required: false
     default: "false"
   markdown:
-    description: "Write a markdown report to GITHUB_STEP_SUMMARY"
+    description: "Write a markdown report to the GitHub Actions job summary"
     required: false
     default: "true"
 runs:

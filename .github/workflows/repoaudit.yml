@@ -7,6 +7,7 @@ on:
 
 jobs:
   score:
+    name: score
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
