@@ -78,6 +78,30 @@ test("scores a well-prepared repo highly", async () => {
   assert.match(formatBadgeMarkdown(report), /shields\.io/);
 });
 
+test("recognizes well-formed pyproject.toml packaging metadata", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "README.md"),
+    "# Demo\n\n## Install\n\npip install .\n\n## Usage\n\nRun the package.\n",
+  );
+  await writeFile(
+    path.join(root, "LICENSE"),
+    "MIT License\npermission is hereby granted, free of charge\n",
+  );
+  await writeFile(
+    path.join(root, "pyproject.toml"),
+    `[project]\nname = "demo"\nversion = "0.1.0"\ndependencies = ["requests>=2.31"]\n\n[build-system]\nrequires = ["setuptools>=61"]\nbuild-backend = "setuptools.build_meta"\n`,
+  );
+
+  const report = await runAudit({ root, ...opts });
+  const pyprojectCheck = report.results.find(
+    (r) => r.id === "packaging.python.pyproject",
+  );
+
+  assert.ok(pyprojectCheck);
+  assert.equal(pyprojectCheck?.severity, "pass");
+});
+
 test("detects a tracked .env file as a failure", async () => {
   const root = await makeTempRepo();
   await writeFile(
