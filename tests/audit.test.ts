@@ -100,6 +100,7 @@ test("recognizes well-formed pyproject.toml packaging metadata", async () => {
 
   assert.ok(pyprojectCheck);
   assert.equal(pyprojectCheck?.severity, "pass");
+  assert.match(pyprojectCheck?.message ?? "", /5\/5/i);
 });
 
 test("detects a tracked .env file as a failure", async () => {

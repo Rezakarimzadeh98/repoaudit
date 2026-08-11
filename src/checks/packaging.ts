@@ -135,14 +135,23 @@ export async function checkPackaging(root: string): Promise<CheckResult[]> {
     const pyprojectPath = path.join(root, "pyproject.toml");
     if (await exists(pyprojectPath)) {
       const pyprojectRaw = await readText(pyprojectPath);
-      const hasProjectMetadata = /\[project\]/i.test(pyprojectRaw ?? "") || /\[tool\.poetry\]/i.test(pyprojectRaw ?? "");
+      const raw = pyprojectRaw ?? "";
+      const indicators = [
+        /\[(project|tool\.poetry)\]/i.test(raw),
+        /^\s*name\s*=.*$/im.test(raw),
+        /^\s*version\s*=.*$/im.test(raw),
+        /^\s*dependencies\s*=.*$/im.test(raw),
+        /\[build-system\]/i.test(raw),
+      ];
+      const score = indicators.filter(Boolean).length;
+      const hasProjectMetadata = score >= 3;
       results.push({
         id: "packaging.python.pyproject",
         category: "packaging",
         title: "pyproject.toml metadata",
-        severity: hasProjectMetadata ? "pass" : "info",
+        severity: score >= 5 ? "pass" : hasProjectMetadata ? "info" : "info",
         message: hasProjectMetadata
-          ? "pyproject.toml contains project metadata."
+          ? `pyproject.toml contains project metadata (${score}/5 indicators).`
           : "pyproject.toml found but no project metadata section was detected.",
       });
     }
