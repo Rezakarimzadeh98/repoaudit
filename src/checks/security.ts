@@ -42,12 +42,16 @@ const RISKY_NAMES = [
   "service-account.json",
 ];
 
+function isSampleOrFixturePath(rel: string): boolean {
+  return /(^|\/)(fixtures?|examples?|mocks?|samples?|tests?)\//i.test(rel);
+}
+
 function shouldSkipSecretScan(rel: string): boolean {
   return (
     rel.includes("package-lock.json") ||
     rel.includes("pnpm-lock.yaml") ||
     rel.includes("yarn.lock") ||
-    /(^|\/)(fixtures?|examples?|mocks?)\//i.test(rel)
+    isSampleOrFixturePath(rel)
   );
 }
 
@@ -55,8 +59,10 @@ export async function checkSecurity(root: string): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
   const files = await listFiles(root);
 
-  const riskyPresent = files.filter((f) =>
-    RISKY_NAMES.some((name) => f === name || f.endsWith(`/${name}`)),
+  const riskyPresent = files.filter(
+    (f) =>
+      !isSampleOrFixturePath(f) &&
+      RISKY_NAMES.some((name) => f === name || f.endsWith(`/${name}`)),
   );
 
   results.push({
