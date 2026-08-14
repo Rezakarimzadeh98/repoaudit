@@ -1,9 +1,10 @@
 import path from "node:path";
 import type { CheckResult } from "../types.js";
-import { exists, findFirst } from "../fs.js";
+import { exists, findFirst, listFiles } from "../fs.js";
 
 export async function checkCommunity(root: string): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
+  const files = await listFiles(root);
 
   const contributing = await findFirst(root, [
     "CONTRIBUTING.md",
@@ -75,9 +76,8 @@ export async function checkCommunity(root: string): Promise<CheckResult[]> {
 
   const prTemplate =
     (await exists(path.join(root, ".github", "PULL_REQUEST_TEMPLATE.md"))) ||
-    (await exists(
-      path.join(root, ".github", "PULL_REQUEST_TEMPLATE", "pull_request_template.md"),
-    ));
+    (await exists(path.join(root, ".github", "pull_request_template.md"))) ||
+    files.some((file) => file.startsWith(".github/PULL_REQUEST_TEMPLATE/"));
   results.push({
     id: "community.pr_template",
     category: "community",

@@ -48,6 +48,11 @@ test("scores a well-prepared repo highly", async () => {
     path.join(root, ".github", "ISSUE_TEMPLATE", "bug.md"),
     "---\nname: bug\n---\n",
   );
+  await mkdir(path.join(root, ".github", "PULL_REQUEST_TEMPLATE"), { recursive: true });
+  await writeFile(
+    path.join(root, ".github", "PULL_REQUEST_TEMPLATE", "feature.md"),
+    "## Summary\n",
+  );
   await writeFile(path.join(root, "CONTRIBUTING.md"), "# Contributing\n");
   await writeFile(path.join(root, "SECURITY.md"), "# Security\n");
   await mkdir(path.join(root, "tests"), { recursive: true });
@@ -118,4 +123,41 @@ test("does not flag UI password copy as a secret", async () => {
   const report = await runAudit({ root, ...opts });
   const secrets = report.results.find((r) => r.id === "security.secret_patterns");
   assert.equal(secrets?.severity, "pass");
+});
+
+test("detects pull request templates stored under .github/PULL_REQUEST_TEMPLATE", async () => {
+  const root = await makeTempRepo();
+  await mkdir(path.join(root, ".github", "PULL_REQUEST_TEMPLATE"), { recursive: true });
+  await writeFile(
+    path.join(root, ".github", "PULL_REQUEST_TEMPLATE", "bugfix.md"),
+    "## Checklist\n",
+  );
+
+  const report = await runAudit({ root, ...opts });
+  const prTemplate = report.results.find((r) => r.id === "community.pr_template");
+  assert.equal(prTemplate?.severity, "pass");
+});
+
+test("secret scan budget is applied after ignored paths are filtered", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "README.md"),
+    "# x\n\n## Install\n\na\n\n## Usage\n\nb\n\nc\n\nd\n",
+  );
+  await writeFile(
+    path.join(root, "LICENSE"),
+    "MIT License\npermission is hereby granted, free of charge\n",
+  );
+  await writeFile(path.join(root, ".gitignore"), ".env\n");
+  await mkdir(path.join(root, "fixtures"), { recursive: true });
+  for (let index = 0; index < 550; index += 1) {
+    await writeFile(path.join(root, "fixtures", `sample-${index}.json`), '{"ok":true}\n');
+  }
+  const tokenValue = ["ghp_", "1234567890", "ABCDEFGHIJKLMNOP"].join("");
+  const appSource = 'const ' + 'token' + ' = "' + tokenValue + '";\n';
+  await writeFile(path.join(root, "app.js"), appSource);
+
+  const report = await runAudit({ root, ...opts });
+  const secrets = report.results.find((r) => r.id === "security.secret_patterns");
+  assert.equal(secrets?.severity, "fail");
 });
