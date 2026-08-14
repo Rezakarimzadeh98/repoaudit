@@ -42,6 +42,15 @@ const RISKY_NAMES = [
   "service-account.json",
 ];
 
+function shouldSkipSecretScan(rel: string): boolean {
+  return (
+    rel.includes("package-lock.json") ||
+    rel.includes("pnpm-lock.yaml") ||
+    rel.includes("yarn.lock") ||
+    /(^|\/)(fixtures?|examples?|mocks?)\//i.test(rel)
+  );
+}
+
 export async function checkSecurity(root: string): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
   const files = await listFiles(root);
@@ -98,22 +107,16 @@ export async function checkSecurity(root: string): Promise<CheckResult[]> {
     });
   }
 
-  const scanTargets = files.filter((f) =>
-    /\.(ts|tsx|js|jsx|py|go|env|yml|yaml|json|toml|ini|sh|ps1|rb|php|java|cs)$/i.test(
-      f,
-    ),
-  );
+  const scanTargets = files
+    .filter((f) =>
+      /\.(ts|tsx|js|jsx|py|go|env|yml|yaml|json|toml|ini|sh|ps1|rb|php|java|cs)$/i.test(
+        f,
+      ),
+    )
+    .filter((f) => !shouldSkipSecretScan(f));
 
   const findings: string[] = [];
   for (const rel of scanTargets.slice(0, 500)) {
-    if (
-      rel.includes("package-lock.json") ||
-      rel.includes("pnpm-lock.yaml") ||
-      rel.includes("yarn.lock") ||
-      /(^|\/)(fixtures?|examples?|mocks?)\//i.test(rel)
-    ) {
-      continue;
-    }
     const text = await readText(path.join(root, rel));
     if (!text) continue;
     for (const pattern of SECRET_PATTERNS) {
