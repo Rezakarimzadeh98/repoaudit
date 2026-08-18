@@ -78,6 +78,31 @@ test("scores a well-prepared repo highly", async () => {
   assert.match(formatBadgeMarkdown(report), /shields\.io/);
 });
 
+test("recognizes well-formed pyproject.toml packaging metadata", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "README.md"),
+    "# Demo\n\n## Install\n\npip install .\n\n## Usage\n\nRun the package.\n",
+  );
+  await writeFile(
+    path.join(root, "LICENSE"),
+    "MIT License\npermission is hereby granted, free of charge\n",
+  );
+  await writeFile(
+    path.join(root, "pyproject.toml"),
+    `[project]\nname = "demo"\nversion = "0.1.0"\ndependencies = ["requests>=2.31"]\n\n[build-system]\nrequires = ["setuptools>=61"]\nbuild-backend = "setuptools.build_meta"\n`,
+  );
+
+  const report = await runAudit({ root, ...opts });
+  const pyprojectCheck = report.results.find(
+    (r) => r.id === "packaging.python.pyproject",
+  );
+
+  assert.ok(pyprojectCheck);
+  assert.equal(pyprojectCheck?.severity, "pass");
+  assert.match(pyprojectCheck?.message ?? "", /5\/5/i);
+});
+
 test("detects a tracked .env file as a failure", async () => {
   const root = await makeTempRepo();
   await writeFile(
@@ -96,12 +121,93 @@ test("detects a tracked .env file as a failure", async () => {
   assert.equal(sensitive?.severity, "fail");
 });
 
+test("ignores sample env files in examples and fixtures", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "README.md"),
+    "# x\n\n## Install\n\na\n\n## Usage\n\nb\n\nc\n\nd\n",
+  );
+  await writeFile(
+    path.join(root, "LICENSE"),
+    "MIT License\npermission is hereby granted, free of charge\n",
+  );
+  await writeFile(path.join(root, ".gitignore"), ".env\n.env.*\n");
+  await mkdir(path.join(root, "examples", "demo-app"), { recursive: true });
+  await mkdir(path.join(root, "fixtures", "demo"), { recursive: true });
+  await writeFile(
+    path.join(root, "examples", "demo-app", ".env"),
+    "# example only\nNEXT_PUBLIC_API_URL=https://example.test\n",
+  );
+  await writeFile(
+    path.join(root, "fixtures", "demo", ".env.production"),
+    "# fixture default\nENV_VARIABLE=fixture\n",
+  );
+
+  const report = await runAudit({ root, ...opts });
+  const sensitive = report.results.find((r) => r.id === "security.sensitive_files");
+
+  assert.equal(sensitive?.severity, "pass");
+});
+
 test("fix scaffolds missing hygiene files", async () => {
   const root = await makeTempRepo();
   const result = await applyFixes(root);
   assert.ok(result.created.includes("LICENSE"));
   assert.ok(result.created.includes(".gitignore"));
   assert.ok(result.created.includes(".github/workflows/ci.yml"));
+});
+
+test("detects lowercase GitHub community file names", async () => {
+  const root = await makeTempRepo();
+
+  await writeFile(
+    path.join(root, "README.md"),
+    "# Demo\n\n## Install\n\nnpm install\n\n## Usage\n\nnpm run dev\n",
+  );
+  await writeFile(
+    path.join(root, "LICENSE"),
+    "MIT License\npermission is hereby granted, free of charge\n",
+  );
+  await mkdir(path.join(root, ".github", "issue_template"), { recursive: true });
+  await writeFile(path.join(root, "contributing.md"), "# Contributing\n");
+  await writeFile(path.join(root, "code_of_conduct.md"), "# Code of Conduct\n");
+  await writeFile(path.join(root, "changelog.md"), "# Changelog\n");
+  await writeFile(
+    path.join(root, ".github", "issue_template", "bug.md"),
+    "---\nname: bug\n---\n",
+  );
+  await writeFile(
+    path.join(root, ".github", "pull_request_template.md"),
+    "## Summary\n",
+  );
+  await writeFile(path.join(root, ".github", "funding.yml"), "github: [acme]\n");
+
+  const report = await runAudit({ root, ...opts });
+
+  assert.equal(
+    report.results.find((r) => r.id === "community.contributing")?.severity,
+    "pass",
+  );
+  assert.equal(
+    report.results.find((r) => r.id === "community.code_of_conduct")?.severity,
+    "pass",
+  );
+  assert.equal(
+    report.results.find((r) => r.id === "community.changelog")?.severity,
+    "pass",
+  );
+  assert.equal(
+    report.results.find((r) => r.id === "community.issue_templates")?.severity,
+    "pass",
+  );
+  assert.equal(
+    report.results.find((r) => r.id === "community.pr_template")?.severity,
+    "pass",
+  );
+  assert.equal(
+    report.results.find((r) => r.id === "community.funding")?.severity,
+    "pass",
+  );
 });
 
 test("does not flag UI password copy as a secret", async () => {

@@ -117,11 +117,12 @@ export async function checkPackaging(root: string): Promise<CheckResult[]> {
     }
   }
 
-  if (
+  const hasPythonPackaging =
     (await exists(path.join(root, "pyproject.toml"))) ||
     (await exists(path.join(root, "setup.py"))) ||
-    (await exists(path.join(root, "requirements.txt")))
-  ) {
+    (await exists(path.join(root, "requirements.txt")));
+
+  if (hasPythonPackaging) {
     results.push({
       id: "packaging.python",
       category: "packaging",
@@ -130,6 +131,30 @@ export async function checkPackaging(root: string): Promise<CheckResult[]> {
       weight: 1,
       message: "Python packaging/dependency files detected.",
     });
+
+    const pyprojectPath = path.join(root, "pyproject.toml");
+    if (await exists(pyprojectPath)) {
+      const pyprojectRaw = await readText(pyprojectPath);
+      const raw = pyprojectRaw ?? "";
+      const indicators = [
+        /\[(project|tool\.poetry)\]/i.test(raw),
+        /^\s*name\s*=.*$/im.test(raw),
+        /^\s*version\s*=.*$/im.test(raw),
+        /^\s*dependencies\s*=.*$/im.test(raw),
+        /\[build-system\]/i.test(raw),
+      ];
+      const score = indicators.filter(Boolean).length;
+      const hasProjectMetadata = score >= 3;
+      results.push({
+        id: "packaging.python.pyproject",
+        category: "packaging",
+        title: "pyproject.toml metadata",
+        severity: score >= 5 ? "pass" : hasProjectMetadata ? "info" : "info",
+        message: hasProjectMetadata
+          ? `pyproject.toml contains project metadata (${score}/5 indicators).`
+          : "pyproject.toml found but no project metadata section was detected.",
+      });
+    }
   }
 
   if (await exists(path.join(root, "Cargo.toml"))) {

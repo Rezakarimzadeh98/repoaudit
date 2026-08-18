@@ -8,8 +8,11 @@ export async function checkCommunity(root: string): Promise<CheckResult[]> {
 
   const contributing = await findFirst(root, [
     "CONTRIBUTING.md",
+    "contributing.md",
     "docs/CONTRIBUTING.md",
+    "docs/contributing.md",
     ".github/CONTRIBUTING.md",
+    ".github/contributing.md",
   ]);
   results.push({
     id: "community.contributing",
@@ -27,7 +30,9 @@ export async function checkCommunity(root: string): Promise<CheckResult[]> {
 
   const codeOfConduct = await findFirst(root, [
     "CODE_OF_CONDUCT.md",
+    "code_of_conduct.md",
     ".github/CODE_OF_CONDUCT.md",
+    ".github/code_of_conduct.md",
   ]);
   results.push({
     id: "community.code_of_conduct",
@@ -41,8 +46,11 @@ export async function checkCommunity(root: string): Promise<CheckResult[]> {
 
   const changelog = await findFirst(root, [
     "CHANGELOG.md",
+    "changelog.md",
     "CHANGES.md",
+    "changes.md",
     "HISTORY.md",
+    "history.md",
   ]);
   results.push({
     id: "community.changelog",
@@ -59,7 +67,9 @@ export async function checkCommunity(root: string): Promise<CheckResult[]> {
 
   const issueTemplates =
     (await exists(path.join(root, ".github", "ISSUE_TEMPLATE"))) ||
-    (await exists(path.join(root, ".github", "ISSUE_TEMPLATE.md")));
+    (await exists(path.join(root, ".github", "issue_template"))) ||
+    (await exists(path.join(root, ".github", "ISSUE_TEMPLATE.md"))) ||
+    (await exists(path.join(root, ".github", "issue_template.md")));
   results.push({
     id: "community.issue_templates",
     category: "community",
@@ -77,7 +87,14 @@ export async function checkCommunity(root: string): Promise<CheckResult[]> {
   const prTemplate =
     (await exists(path.join(root, ".github", "PULL_REQUEST_TEMPLATE.md"))) ||
     (await exists(path.join(root, ".github", "pull_request_template.md"))) ||
-    files.some((file) => file.startsWith(".github/PULL_REQUEST_TEMPLATE/"));
+    (await exists(
+      path.join(root, ".github", "PULL_REQUEST_TEMPLATE", "pull_request_template.md"),
+    )) ||
+    files.some(
+      (file) =>
+        file.startsWith(".github/PULL_REQUEST_TEMPLATE/") ||
+        file.startsWith(".github/pull_request_template/"),
+    );
   results.push({
     id: "community.pr_template",
     category: "community",
@@ -90,7 +107,9 @@ export async function checkCommunity(root: string): Promise<CheckResult[]> {
 
   const funding =
     (await exists(path.join(root, ".github", "FUNDING.yml"))) ||
-    (await exists(path.join(root, "FUNDING.yml")));
+    (await exists(path.join(root, ".github", "funding.yml"))) ||
+    (await exists(path.join(root, "FUNDING.yml"))) ||
+    (await exists(path.join(root, "funding.yml")));
   results.push({
     id: "community.funding",
     category: "community",
