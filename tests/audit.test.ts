@@ -267,3 +267,152 @@ test("secret scan budget is applied after ignored paths are filtered", async () 
   const secrets = report.results.find((r) => r.id === "security.secret_patterns");
   assert.equal(secrets?.severity, "fail");
 });
+
+test("spdx checks: package.json license field (valid and invalid)", async () => {
+  {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "test-pkg",
+        license: "MIT OR Apache-2.0"
+      })
+    );
+    const report = await runAudit({ root, ...opts });
+    const check = report.results.find((r) => r.id === "packaging.npm.license");
+    assert.ok(check);
+    assert.equal(check.severity, "pass");
+    assert.match(check.message, /MIT OR Apache-2.0/);
+  }
+
+  {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "test-pkg",
+        license: { type: "MIT" }
+      })
+    );
+    const report = await runAudit({ root, ...opts });
+    const check = report.results.find((r) => r.id === "packaging.npm.license");
+    assert.ok(check);
+    assert.equal(check.severity, "pass");
+    assert.match(check.message, /MIT/);
+  }
+
+  {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "test-pkg",
+        license: "UNLICENSED"
+      })
+    );
+    const report = await runAudit({ root, ...opts });
+    const check = report.results.find((r) => r.id === "packaging.npm.license");
+    assert.ok(check);
+    assert.equal(check.severity, "pass");
+    assert.match(check.message, /UNLICENSED/);
+  }
+
+  {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "test-pkg",
+        license: "Not-A-Valid-Spdx-License"
+      })
+    );
+    const report = await runAudit({ root, ...opts });
+    const check = report.results.find((r) => r.id === "packaging.npm.license");
+    assert.ok(check);
+    assert.equal(check.severity, "warn");
+    assert.match(check.message, /not a valid SPDX expression/);
+    assert.ok(check.hint);
+  }
+
+  {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "test-pkg"
+      })
+    );
+    const report = await runAudit({ root, ...opts });
+    const check = report.results.find((r) => r.id === "packaging.npm.license");
+    assert.ok(check);
+    assert.equal(check.severity, "warn");
+    assert.match(check.message, /has no license field/);
+  }
+});
+
+test("spdx checks: source files spdx headers (valid, invalid, block comment, none)", async () => {
+  {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "index.js"),
+      "// SPDX-License-Identifier: MIT\nconsole.log('hello');\n"
+    );
+    const report = await runAudit({ root, ...opts });
+    const check = report.results.find((r) => r.id === "license.spdx");
+    assert.ok(check);
+    assert.equal(check.severity, "pass");
+    assert.match(check.message, /Found valid SPDX headers: MIT/);
+  }
+
+  {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "index.js"),
+      "/* SPDX-License-Identifier: MIT */\nconsole.log('hello');\n"
+    );
+    const report = await runAudit({ root, ...opts });
+    const check = report.results.find((r) => r.id === "license.spdx");
+    assert.ok(check);
+    assert.equal(check.severity, "pass");
+    assert.match(check.message, /Found valid SPDX headers: MIT/);
+  }
+
+  {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "main.py"),
+      "# SPDX-License-Identifier: MyCustomNonSpdxLicense\nprint('hello')\n"
+    );
+    const report = await runAudit({ root, ...opts });
+    const check = report.results.find((r) => r.id === "license.spdx");
+    assert.ok(check);
+    assert.equal(check.severity, "warn");
+    assert.match(check.message, /Found invalid SPDX headers in source files: MyCustomNonSpdxLicense/i);
+    assert.ok(check.hint);
+  }
+
+  {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "main.py"),
+      "# SPDX-License-Identifier: UNLICENSED\nprint('hello')\n"
+    );
+    const report = await runAudit({ root, ...opts });
+    const check = report.results.find((r) => r.id === "license.spdx");
+    assert.ok(check);
+    assert.equal(check.severity, "warn");
+    assert.match(check.message, /Found invalid SPDX headers in source files: UNLICENSED/i);
+  }
+
+  {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "main.py"),
+      "print('hello')\n"
+    );
+    const report = await runAudit({ root, ...opts });
+    const check = report.results.find((r) => r.id === "license.spdx");
+    assert.equal(check, undefined);
+  }
+});
+

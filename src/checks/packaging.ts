@@ -1,6 +1,27 @@
 import path from "node:path";
 import type { CheckResult } from "../types.js";
 import { exists, findFirst, readText } from "../fs.js";
+import { isValidSpdxExpression } from "../spdx.js";
+
+function extractLicenseStrings(license: any): string[] {
+  if (!license) return [];
+  if (typeof license === "string") {
+    return [license];
+  }
+  if (Array.isArray(license)) {
+    const list: string[] = [];
+    for (const item of license) {
+      list.push(...extractLicenseStrings(item));
+    }
+    return list;
+  }
+  if (typeof license === "object") {
+    if (typeof license.type === "string") {
+      return [license.type];
+    }
+  }
+  return [];
+}
 
 export async function checkPackaging(root: string): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
@@ -12,7 +33,7 @@ export async function checkPackaging(root: string): Promise<CheckResult[]> {
       const pkg = JSON.parse(raw ?? "{}") as {
         name?: string;
         description?: string;
-        license?: string;
+        license?: any;
         repository?: unknown;
         keywords?: unknown;
         engines?: unknown;
@@ -38,15 +59,36 @@ export async function checkPackaging(root: string): Promise<CheckResult[]> {
             : "package.json is missing a description.",
       });
 
+      const licenseStrings = extractLicenseStrings(pkg.license);
+      let licenseSeverity: "pass" | "warn" = "warn";
+      let licenseMessage = "";
+      let licenseHint: string | undefined;
+
+      if (!pkg.license) {
+        licenseMessage = "package.json has no license field.";
+        licenseHint = "Add a valid SPDX license identifier (e.g., 'MIT', 'Apache-2.0') to the package.json license field.";
+      } else if (licenseStrings.length === 0) {
+        licenseMessage = "package.json license field is invalid or empty.";
+        licenseHint = "Ensure the license field is a valid SPDX identifier (like 'MIT') or expression (like 'MIT OR Apache-2.0').";
+      } else {
+        const invalidLicenses = licenseStrings.filter(l => !isValidSpdxExpression(l, { allowNpmConventions: true }));
+        if (invalidLicenses.length > 0) {
+          licenseMessage = `package.json license '${licenseStrings.join(", ")}' is not a valid SPDX expression.`;
+          licenseHint = "Ensure the license field is a valid SPDX identifier (like 'MIT' or 'Apache-2.0') or expression (like 'MIT OR Apache-2.0').";
+        } else {
+          licenseSeverity = "pass";
+          licenseMessage = `package.json license: ${licenseStrings.join(", ")}`;
+        }
+      }
+
       results.push({
         id: "packaging.npm.license",
         category: "packaging",
         title: "package.json license",
-        severity: pkg.license ? "pass" : "warn",
+        severity: licenseSeverity,
         weight: 2,
-        message: pkg.license
-          ? `package.json license: ${pkg.license}`
-          : "package.json has no license field.",
+        message: licenseMessage,
+        hint: licenseHint,
       });
 
       const keywords = Array.isArray(pkg.keywords) ? pkg.keywords : [];
