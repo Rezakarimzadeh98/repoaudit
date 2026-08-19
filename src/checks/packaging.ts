@@ -154,6 +154,77 @@ export async function checkPackaging(root: string): Promise<CheckResult[]> {
           ? `pyproject.toml contains project metadata (${score}/5 indicators).`
           : "pyproject.toml found but no project metadata section was detected.",
       });
+
+      const fields = extractPyprojectFields(raw);
+
+      // Name Check
+      const hasName = fields.name && fields.name.trim().length > 0;
+      results.push({
+        id: "packaging.python.name",
+        category: "packaging",
+        title: "pyproject.toml name",
+        severity: hasName ? "pass" : "fail",
+        weight: 2,
+        message: hasName
+          ? `pyproject.toml project name: ${fields.name}`
+          : "pyproject.toml is missing project name.",
+        hint: hasName ? undefined : "Add a 'name' field under the [project] table in pyproject.toml.",
+      });
+
+      // Description Check
+      const hasDesc = fields.description && fields.description.trim().length > 0;
+      results.push({
+        id: "packaging.python.description",
+        category: "packaging",
+        title: "pyproject.toml description",
+        severity: hasDesc ? "pass" : "warn",
+        weight: 2,
+        message: hasDesc
+          ? "pyproject.toml has a description."
+          : "pyproject.toml is missing a description.",
+        hint: hasDesc ? undefined : "Add a 'description' field under the [project] table in pyproject.toml to describe your package.",
+      });
+
+      // License Check
+      const hasLicense = fields.license && fields.license.trim().length > 0;
+      results.push({
+        id: "packaging.python.license",
+        category: "packaging",
+        title: "pyproject.toml license",
+        severity: hasLicense ? "pass" : "warn",
+        weight: 2,
+        message: hasLicense
+          ? `pyproject.toml license: ${fields.license}`
+          : "pyproject.toml has no license defined.",
+        hint: hasLicense ? undefined : "Specify a license under the [project] table (e.g. license = 'MIT' or license = { text = 'MIT' }) in pyproject.toml.",
+      });
+
+      // Requires-Python Check
+      const hasRequires = fields.requiresPython && fields.requiresPython.trim().length > 0;
+      results.push({
+        id: "packaging.python.requires_python",
+        category: "packaging",
+        title: "pyproject.toml requires-python",
+        severity: hasRequires ? "pass" : "warn",
+        weight: 2,
+        message: hasRequires
+          ? `pyproject.toml requires-python: ${fields.requiresPython}`
+          : "pyproject.toml is missing requires-python target.",
+        hint: hasRequires ? undefined : "Add a 'requires-python' field under [project] table (e.g. requires-python = '>=3.8') to state compatible Python versions.",
+      });
+
+      // Readme Check
+      const hasReadme = fields.readme && fields.readme.trim().length > 0;
+      results.push({
+        id: "packaging.python.readme",
+        category: "packaging",
+        title: "pyproject.toml readme reference",
+        severity: hasReadme ? "pass" : "info",
+        message: hasReadme
+          ? `pyproject.toml readme reference: ${fields.readme}`
+          : "pyproject.toml has no readme reference.",
+        hint: hasReadme ? undefined : "Add a 'readme' field under [project] table pointing to your README file so PyPI can show package documentation.",
+      });
     }
   }
 
@@ -208,4 +279,126 @@ export async function checkPackaging(root: string): Promise<CheckResult[]> {
   });
 
   return results;
+}
+
+interface PyprojectFields {
+  name?: string;
+  description?: string;
+  license?: string;
+  requiresPython?: string;
+  readme?: string;
+}
+
+function extractPyprojectFields(raw: string): PyprojectFields {
+  const lines = raw.split(/\r?\n/);
+  let currentSection = "";
+  
+  const fields: PyprojectFields = {};
+
+  for (let line of lines) {
+    line = line.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    // Table header check: e.g. [project] or [tool.poetry]
+    const sectionMatch = line.match(/^\[+([^\]]+)\]+/);
+    if (sectionMatch) {
+      currentSection = sectionMatch[1].trim().toLowerCase();
+      continue;
+    }
+
+    // Key-value pair check: e.g. key = value
+    const eqIdx = line.indexOf("=");
+    if (eqIdx !== -1) {
+      const key = line.slice(0, eqIdx).trim().toLowerCase();
+      let value = line.slice(eqIdx + 1).trim();
+
+      // Clean value (strip outer quotes or comments)
+      value = stripTrailingComment(value);
+
+      // Handle simple string extraction
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+
+      let fullKey = key;
+      let targetSection = currentSection;
+      if (key.includes(".")) {
+        const parts = key.split(".");
+        fullKey = parts.pop()!;
+        targetSection = parts.join(".");
+      }
+
+      if (targetSection === "project") {
+        if (fullKey === "name") fields.name = value;
+        else if (fullKey === "description") fields.description = value;
+        else if (fullKey === "requires-python") fields.requiresPython = value;
+        else if (fullKey === "license") {
+          if (value.startsWith("{") && value.endsWith("}")) {
+            const parsed = parseInlineTable(value);
+            fields.license = parsed.text || parsed.file;
+          } else {
+            fields.license = value;
+          }
+        }
+        else if (fullKey === "readme") {
+          if (value.startsWith("{") && value.endsWith("}")) {
+            const parsed = parseInlineTable(value);
+            fields.readme = parsed.file || parsed.text;
+          } else {
+            fields.readme = value;
+          }
+        }
+      } else if (targetSection === "tool.poetry") {
+        if (fullKey === "name") fields.name = value;
+        else if (fullKey === "description") fields.description = value;
+        else if (fullKey === "license") fields.license = value;
+        else if (fullKey === "readme") {
+          if (value.startsWith("{") && value.endsWith("}")) {
+            const parsed = parseInlineTable(value);
+            fields.readme = parsed.file || parsed.text;
+          } else {
+            fields.readme = value;
+          }
+        }
+      } else if (targetSection === "tool.poetry.dependencies") {
+        if (fullKey === "python") {
+          fields.requiresPython = value;
+        }
+      }
+    }
+  }
+
+  return fields;
+}
+
+function stripTrailingComment(val: string): string {
+  let inDoubleQuote = false;
+  let inSingleQuote = false;
+  for (let i = 0; i < val.length; i++) {
+    const char = val[i];
+    if (char === '"' && !inSingleQuote) inDoubleQuote = !inDoubleQuote;
+    else if (char === "'" && !inDoubleQuote) inSingleQuote = !inSingleQuote;
+    else if (char === "#" && !inDoubleQuote && !inSingleQuote) {
+      return val.slice(0, i).trim();
+    }
+  }
+  return val;
+}
+
+function parseInlineTable(content: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const inner = content.slice(1, -1);
+  const pairs = inner.split(",");
+  for (const pair of pairs) {
+    const eqIdx = pair.indexOf("=");
+    if (eqIdx !== -1) {
+      const key = pair.slice(0, eqIdx).trim().toLowerCase();
+      let valStr = pair.slice(eqIdx + 1).trim();
+      if ((valStr.startsWith('"') && valStr.endsWith('"')) || (valStr.startsWith("'") && valStr.endsWith("'"))) {
+        valStr = valStr.slice(1, -1);
+      }
+      result[key] = valStr;
+    }
+  }
+  return result;
 }

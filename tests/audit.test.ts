@@ -267,3 +267,129 @@ test("secret scan budget is applied after ignored paths are filtered", async () 
   const secrets = report.results.find((r) => r.id === "security.secret_patterns");
   assert.equal(secrets?.severity, "fail");
 });
+
+test("python checks do not activate for non-python repos", async () => {
+  const root = await makeTempRepo();
+  const report = await runAudit({ root, ...opts });
+  const pythonCheck = report.results.find((r) => r.id === "packaging.python");
+  assert.equal(pythonCheck, undefined);
+});
+
+test("python checks activate and warn when pyproject.toml is missing in python repos", async () => {
+  const root = await makeTempRepo();
+  await writeFile(path.join(root, "setup.py"), "# setup\n");
+  const report = await runAudit({ root, ...opts });
+  const pythonCheck = report.results.find((r) => r.id === "packaging.python");
+  assert.ok(pythonCheck);
+  assert.equal(pythonCheck?.severity, "pass");
+});
+
+test("python checks pass with valid PEP 621 pyproject.toml", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "pyproject.toml"),
+    `[project]
+name = "my-awesome-python-app"
+description = "A wonderful python app"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+`
+  );
+
+  const report = await runAudit({ root, ...opts });
+
+  const nameCheck = report.results.find((r) => r.id === "packaging.python.name");
+  assert.ok(nameCheck);
+  assert.equal(nameCheck?.severity, "pass");
+  assert.match(nameCheck?.message || "", /my-awesome-python-app/);
+
+  const descCheck = report.results.find((r) => r.id === "packaging.python.description");
+  assert.ok(descCheck);
+  assert.equal(descCheck?.severity, "pass");
+
+  const licenseCheck = report.results.find((r) => r.id === "packaging.python.license");
+  assert.ok(licenseCheck);
+  assert.equal(licenseCheck?.severity, "pass");
+  assert.match(licenseCheck?.message || "", /MIT/);
+
+  const requiresCheck = report.results.find((r) => r.id === "packaging.python.requires_python");
+  assert.ok(requiresCheck);
+  assert.equal(requiresCheck?.severity, "pass");
+  assert.match(requiresCheck?.message || "", />=3\.9/);
+
+  const readmeCheck = report.results.find((r) => r.id === "packaging.python.readme");
+  assert.ok(readmeCheck);
+  assert.equal(readmeCheck?.severity, "pass");
+  assert.match(readmeCheck?.message || "", /README\.md/);
+});
+
+test("python checks pass with valid Poetry pyproject.toml", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "pyproject.toml"),
+    `[tool.poetry]
+name = "poetry-app"
+description = "A poetry python app"
+readme = "README.md"
+license = "Apache-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+`
+  );
+
+  const report = await runAudit({ root, ...opts });
+
+  const nameCheck = report.results.find((r) => r.id === "packaging.python.name");
+  assert.ok(nameCheck);
+  assert.equal(nameCheck?.severity, "pass");
+  assert.match(nameCheck?.message || "", /poetry-app/);
+
+  const descCheck = report.results.find((r) => r.id === "packaging.python.description");
+  assert.ok(descCheck);
+  assert.equal(descCheck?.severity, "pass");
+
+  const licenseCheck = report.results.find((r) => r.id === "packaging.python.license");
+  assert.ok(licenseCheck);
+  assert.equal(licenseCheck?.severity, "pass");
+  assert.match(licenseCheck?.message || "", /Apache-2\.0/);
+
+  const requiresCheck = report.results.find((r) => r.id === "packaging.python.requires_python");
+  assert.ok(requiresCheck);
+  assert.equal(requiresCheck?.severity, "pass");
+  assert.match(requiresCheck?.message || "", /\^3\.10/);
+});
+
+test("python checks warn/fail when fields are missing or empty", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "pyproject.toml"),
+    `[project]
+description = ""
+`
+  );
+
+  const report = await runAudit({ root, ...opts });
+
+  const nameCheck = report.results.find((r) => r.id === "packaging.python.name");
+  assert.ok(nameCheck);
+  assert.equal(nameCheck?.severity, "fail");
+
+  const descCheck = report.results.find((r) => r.id === "packaging.python.description");
+  assert.ok(descCheck);
+  assert.equal(descCheck?.severity, "warn");
+
+  const licenseCheck = report.results.find((r) => r.id === "packaging.python.license");
+  assert.ok(licenseCheck);
+  assert.equal(licenseCheck?.severity, "warn");
+
+  const requiresCheck = report.results.find((r) => r.id === "packaging.python.requires_python");
+  assert.ok(requiresCheck);
+  assert.equal(requiresCheck?.severity, "warn");
+
+  const readmeCheck = report.results.find((r) => r.id === "packaging.python.readme");
+  assert.ok(readmeCheck);
+  assert.equal(readmeCheck?.severity, "info");
+});
+
