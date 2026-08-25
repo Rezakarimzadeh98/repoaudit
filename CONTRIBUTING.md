@@ -23,6 +23,10 @@ node bin/repoaudit.js .
 4. **Docs / examples** — README demos, Action recipes, language-specific guides
 5. **Tests** — cover edge cases in `tests/`
 
+## Demo / recording guide
+
+For a short, polished contributor demo, follow the guide in [docs/recording-recipe.md](docs/recording-recipe.md). It covers asciinema, VHS, and a quick Windows Terminal capture workflow without bloating the repository with large binary assets.
+
 ## Checklist for a new check
 
 - [ ] Clear `id`, `title`, `category`, and `severity`
