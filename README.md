@@ -27,6 +27,8 @@ repoaudit fix .      # scaffold missing LICENSE/CI/SECURITY/templates
 repoaudit badge .    # print a shields.io badge
 ```
 
+Want a short contributor demo? See the [30-second recording recipe](docs/recording-recipe.md) for a lightweight, repo-friendly workflow using asciinema, VHS, or Windows Terminal.
+
 ## Why people use it
 
 | Problem | What repoaudit does |
