@@ -156,6 +156,30 @@ export async function checkPackaging(root: string): Promise<CheckResult[]> {
       const raw = pyprojectRaw ?? "";
       try {
         const parsed = parseToml(raw) as Record<string, unknown>;
+        const hasProjectSection =
+          typeof getPath(parsed, ["project"]) === "object" &&
+          getPath(parsed, ["project"]) !== null;
+        const hasPoetrySection =
+          typeof getPath(parsed, ["tool", "poetry"]) === "object" &&
+          getPath(parsed, ["tool", "poetry"]) !== null;
+
+        let source = "unknown";
+        if (hasProjectSection && hasPoetrySection) {
+          source = "mixed";
+        } else if (hasProjectSection) {
+          source = "pep621";
+        } else if (hasPoetrySection) {
+          source = "poetry";
+        }
+
+        const sourceLabel =
+          source === "pep621"
+            ? "PEP 621 ([project])"
+            : source === "poetry"
+              ? "Poetry ([tool.poetry])"
+              : source === "mixed"
+                ? "Mixed ([project] + [tool.poetry])"
+                : "Unknown";
 
         const projectName =
           pickString(getPath(parsed, ["project", "name"])) ||
@@ -194,9 +218,9 @@ export async function checkPackaging(root: string): Promise<CheckResult[]> {
         const message =
           missingRequired.length === 0
             ? readme
-              ? `pyproject.toml metadata is complete (${score}/5 checks: required fields + readme).`
-              : "pyproject.toml has required metadata but is missing optional readme reference (4/5 checks)."
-            : `pyproject.toml is missing required metadata field(s): ${missingRequired.join(", ")}.`;
+              ? `pyproject.toml metadata is complete (${score}/5 checks: required fields + readme). Source: ${sourceLabel}.`
+              : `pyproject.toml has required metadata but is missing optional readme reference (4/5 checks). Source: ${sourceLabel}.`
+            : `pyproject.toml is missing required metadata field(s): ${missingRequired.join(", ")}. Source: ${sourceLabel}.`;
 
         results.push({
           id: "packaging.python.pyproject",
