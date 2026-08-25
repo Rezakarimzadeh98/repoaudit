@@ -90,7 +90,7 @@ test("recognizes well-formed pyproject.toml packaging metadata", async () => {
   );
   await writeFile(
     path.join(root, "pyproject.toml"),
-    `[project]\nname = "demo"\nversion = "0.1.0"\ndependencies = ["requests>=2.31"]\n\n[build-system]\nrequires = ["setuptools>=61"]\nbuild-backend = "setuptools.build_meta"\n`,
+    `[project]\nname = "demo"\ndescription = "Demo package"\nlicense = { text = "MIT" }\nrequires-python = ">=3.10"\nreadme = "README.md"\nversion = "0.1.0"\ndependencies = ["requests>=2.31"]\n\n[build-system]\nrequires = ["setuptools>=61"]\nbuild-backend = "setuptools.build_meta"\n`,
   );
 
   const report = await runAudit({ root, ...opts });
@@ -101,6 +101,33 @@ test("recognizes well-formed pyproject.toml packaging metadata", async () => {
   assert.ok(pyprojectCheck);
   assert.equal(pyprojectCheck?.severity, "pass");
   assert.match(pyprojectCheck?.message ?? "", /5\/5/i);
+});
+
+test("warns when required pyproject metadata fields are missing", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "README.md"),
+    "# Demo\n\n## Install\n\npip install .\n\n## Usage\n\nRun the package.\n",
+  );
+  await writeFile(
+    path.join(root, "LICENSE"),
+    "MIT License\npermission is hereby granted, free of charge\n",
+  );
+  await writeFile(
+    path.join(root, "pyproject.toml"),
+    `[project]\nname = "demo"\nversion = "0.1.0"\n`,
+  );
+
+  const report = await runAudit({ root, ...opts });
+  const pyprojectCheck = report.results.find(
+    (r) => r.id === "packaging.python.pyproject",
+  );
+
+  assert.ok(pyprojectCheck);
+  assert.equal(pyprojectCheck?.severity, "warn");
+  assert.match(pyprojectCheck?.message ?? "", /missing required metadata field/i);
+  assert.match(pyprojectCheck?.message ?? "", /description/i);
+  assert.match(pyprojectCheck?.message ?? "", /requires-python/i);
 });
 
 test("detects a tracked .env file as a failure", async () => {

@@ -1,6 +1,24 @@
 import path from "node:path";
+import { parse as parseToml } from "@iarna/toml";
 import type { CheckResult } from "../types.js";
 import { exists, findFirst, readText } from "../fs.js";
+
+function pickString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+}
+
+function getPath(obj: unknown, pathParts: string[]): unknown {
+  let current: unknown = obj;
+  for (const part of pathParts) {
+    if (!current || typeof current !== "object" || !(part in current)) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
 
 export async function checkPackaging(root: string): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
@@ -136,24 +154,71 @@ export async function checkPackaging(root: string): Promise<CheckResult[]> {
     if (await exists(pyprojectPath)) {
       const pyprojectRaw = await readText(pyprojectPath);
       const raw = pyprojectRaw ?? "";
-      const indicators = [
-        /\[(project|tool\.poetry)\]/i.test(raw),
-        /^\s*name\s*=.*$/im.test(raw),
-        /^\s*version\s*=.*$/im.test(raw),
-        /^\s*dependencies\s*=.*$/im.test(raw),
-        /\[build-system\]/i.test(raw),
-      ];
-      const score = indicators.filter(Boolean).length;
-      const hasProjectMetadata = score >= 3;
-      results.push({
-        id: "packaging.python.pyproject",
-        category: "packaging",
-        title: "pyproject.toml metadata",
-        severity: score >= 5 ? "pass" : hasProjectMetadata ? "info" : "info",
-        message: hasProjectMetadata
-          ? `pyproject.toml contains project metadata (${score}/5 indicators).`
-          : "pyproject.toml found but no project metadata section was detected.",
-      });
+      try {
+        const parsed = parseToml(raw) as Record<string, unknown>;
+
+        const projectName =
+          pickString(getPath(parsed, ["project", "name"])) ||
+          pickString(getPath(parsed, ["tool", "poetry", "name"]));
+        const projectDescription =
+          pickString(getPath(parsed, ["project", "description"])) ||
+          pickString(getPath(parsed, ["tool", "poetry", "description"]));
+
+        const projectLicense =
+          pickString(getPath(parsed, ["project", "license"])) ||
+          pickString(getPath(parsed, ["project", "license", "text"])) ||
+          pickString(getPath(parsed, ["project", "license", "file"])) ||
+          pickString(getPath(parsed, ["tool", "poetry", "license"]));
+
+        const requiresPython =
+          pickString(getPath(parsed, ["project", "requires-python"])) ||
+          pickString(getPath(parsed, ["tool", "poetry", "dependencies", "python"]));
+
+        const readme =
+          pickString(getPath(parsed, ["project", "readme"])) ||
+          pickString(getPath(parsed, ["tool", "poetry", "readme"]));
+
+        const requiredChecks = [
+          { id: "name", value: projectName },
+          { id: "description", value: projectDescription },
+          { id: "license", value: projectLicense },
+          { id: "requires-python", value: requiresPython },
+        ];
+
+        const missingRequired = requiredChecks
+          .filter((item) => !item.value)
+          .map((item) => item.id);
+
+        const score = requiredChecks.filter((item) => item.value).length + (readme ? 1 : 0);
+        const severity = missingRequired.length === 0 ? "pass" : "warn";
+        const message =
+          missingRequired.length === 0
+            ? readme
+              ? `pyproject.toml metadata is complete (${score}/5 checks: required fields + readme).`
+              : "pyproject.toml has required metadata but is missing optional readme reference (4/5 checks)."
+            : `pyproject.toml is missing required metadata field(s): ${missingRequired.join(", ")}.`;
+
+        results.push({
+          id: "packaging.python.pyproject",
+          category: "packaging",
+          title: "pyproject.toml metadata",
+          severity,
+          message,
+          hint:
+            missingRequired.length > 0
+              ? "For PEP 621 use [project] fields. For Poetry use [tool.poetry] and [tool.poetry.dependencies.python]."
+              : undefined,
+        });
+      } catch {
+        results.push({
+          id: "packaging.python.pyproject",
+          category: "packaging",
+          title: "pyproject.toml metadata",
+          severity: "fail",
+          message: "pyproject.toml could not be parsed.",
+          hint: "Validate TOML syntax and try again.",
+        });
+      }
     }
   }
 
