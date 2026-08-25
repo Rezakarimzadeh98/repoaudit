@@ -58,6 +58,7 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
-    "@iarna/toml": "^2.2.5"
+    "@iarna/toml": "^2.2.5",
+    "spdx-expression-parse": "^5.0.0"
   }
 }
