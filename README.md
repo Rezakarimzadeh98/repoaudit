@@ -93,6 +93,12 @@ repoaudit . --json
 # treat warnings as failures (CI gate)
 repoaudit . --strict
 
+# optional network link check for README http/https URLs
+repoaudit . --check-links
+
+# skip network checks (when used with --check-links)
+repoaudit . --check-links --offline
+
 # scaffold missing hygiene files (LICENSE, CI, SECURITY, templates, ...)
 repoaudit fix .
 
@@ -161,7 +167,7 @@ The Action writes a markdown report into the job summary and fails the job on FA
 
 | Category | Examples |
 |----------|----------|
-| **Docs** | README quality, install/usage, demos, badges |
+| **Docs** | README quality, install/usage, demos, badges, optional dead-link check |
 | **License** | LICENSE detection (MIT, Apache-2.0, GPL-3.0, BSD-3-Clause) |
 | **Security** | `.env` / credential files, secret-like patterns, `.gitignore`, SECURITY.md, Dependabot |
 | **CI & Tests** | GitHub Actions / other CI, test files, `npm test` / lint scripts |

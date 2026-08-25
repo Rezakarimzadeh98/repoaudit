@@ -25,6 +25,8 @@ export interface AuditOptions {
   markdown: boolean;
   strict: boolean;
   noColor: boolean;
+  checkLinks?: boolean;
+  offline?: boolean;
 }
 
 export interface CategoryScore {
