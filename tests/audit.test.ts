@@ -342,6 +342,77 @@ test("does not flag UI password copy as a secret", async () => {
     assert.equal(spdxHeaderCheck?.severity, "pass");
   });
 
+  test("supports .repoauditrc.json disabledChecks and weights", async () => {
+    const root = await makeTempRepo();
+    await writeFile(
+      path.join(root, "README.md"),
+      "# Demo\n\n## Install\n\nnpm install\n\n## Usage\n\nnpm run dev\n",
+    );
+    await writeFile(path.join(root, "LICENSE"), "MIT License\n");
+    await writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "demo", description: "x", repository: "https://x" }),
+    );
+
+    const base = await runAudit({ root, ...opts });
+    assert.ok(base.results.some((r) => r.id === "packaging.npm.license"));
+
+    await writeFile(
+      path.join(root, ".repoauditrc.json"),
+      JSON.stringify({
+        disabledChecks: ["packaging.npm.license"],
+        weights: {
+          "docs.readme": 10,
+        },
+      }),
+    );
+
+    const configured = await runAudit({ root, ...opts });
+    assert.equal(
+      configured.results.some((r) => r.id === "packaging.npm.license"),
+      false,
+    );
+    assert.equal(
+      configured.results.find((r) => r.id === "docs.readme")?.weight,
+      10,
+    );
+  });
+
+  test("supports .repoauditrc.json strictCategories", async () => {
+    const root = await makeTempRepo();
+    await writeFile(path.join(root, "README.md"), "# Demo\n");
+    await writeFile(path.join(root, "LICENSE"), "MIT License\n");
+
+    const base = await runAudit({ root, ...opts });
+    assert.equal(
+      base.results.find((r) => r.id === "docs.readme.usage")?.severity,
+      "warn",
+    );
+
+    await writeFile(
+      path.join(root, ".repoauditrc.json"),
+      JSON.stringify({ strictCategories: ["docs"] }),
+    );
+
+    const strict = await runAudit({ root, ...opts });
+    assert.equal(
+      strict.results.find((r) => r.id === "docs.readme.usage")?.severity,
+      "fail",
+    );
+  });
+
+  test("fails with clear error on invalid .repoauditrc.json", async () => {
+    const root = await makeTempRepo();
+    await writeFile(path.join(root, "README.md"), "# Demo\n");
+    await writeFile(path.join(root, "LICENSE"), "MIT License\n");
+    await writeFile(path.join(root, ".repoauditrc.json"), "{ invalid json");
+
+    await assert.rejects(
+      () => runAudit({ root, ...opts }),
+      /Invalid \.repoauditrc\.json: must be valid JSON\./,
+    );
+  });
+
 test("detects pull request templates stored under .github/PULL_REQUEST_TEMPLATE", async () => {
   const root = await makeTempRepo();
   await mkdir(path.join(root, ".github", "PULL_REQUEST_TEMPLATE"), { recursive: true });

@@ -100,6 +100,29 @@ repoaudit fix .
 repoaudit badge .
 ```
 
+## Configuration (`.repoauditrc.json`)
+
+If present in the repository root, `repoaudit` will apply optional config overrides:
+
+- `disabledChecks: string[]` — disable specific checks by `id`
+- `weights: Record<string, number>` — override scoring weight for specific checks
+- `strictCategories: ("docs"|"license"|"security"|"ci"|"packaging"|"community")[]` — promote warnings in those categories to failures
+
+Example:
+
+```json
+{
+  "disabledChecks": ["community.funding"],
+  "weights": {
+    "security.secret_patterns": 4,
+    "docs.readme": 2
+  },
+  "strictCategories": ["security"]
+}
+```
+
+Invalid config fails fast with a clear error message.
+
 ### Auto-fix scaffolds
 
 `repoaudit fix` only creates **missing** files — it never overwrites:
