@@ -6,6 +6,7 @@ import { checkSecurity } from "./checks/security.js";
 import { checkCi } from "./checks/ci.js";
 import { checkPackaging } from "./checks/packaging.js";
 import { checkCommunity } from "./checks/community.js";
+import { loadRepoAuditConfig } from "./config.js";
 import { scoreResults } from "./score.js";
 
 export interface AuditReport {
@@ -23,6 +24,8 @@ export interface AuditReport {
 }
 
 export async function runAudit(options: AuditOptions): Promise<AuditReport> {
+  const config = await loadRepoAuditConfig(options.root);
+
   const groups = await Promise.all([
     checkDocs(options.root),
     checkLicense(options.root),
@@ -32,7 +35,35 @@ export async function runAudit(options: AuditOptions): Promise<AuditReport> {
     checkCommunity(options.root),
   ]);
 
-  const results = groups.flat();
+  let results = groups.flat();
+
+  if (config.disabledChecks?.length) {
+    const disabled = new Set(config.disabledChecks);
+    results = results.filter((result) => !disabled.has(result.id));
+  }
+
+  if (config.weights) {
+    results = results.map((result) => {
+      const weight = config.weights?.[result.id];
+      return typeof weight === "number" ? { ...result, weight } : result;
+    });
+  }
+
+  if (config.strictCategories?.length) {
+    const strictCategories = new Set(config.strictCategories);
+    results = results.map((result) =>
+      result.severity === "warn" && strictCategories.has(result.category)
+        ? {
+            ...result,
+            severity: "fail",
+            hint:
+              result.hint ??
+              "This warning was promoted to fail by .repoauditrc.json strictCategories.",
+          }
+        : result,
+    );
+  }
+
   const summary = {
     pass: results.filter((r) => r.severity === "pass").length,
     warn: results.filter((r) => r.severity === "warn").length,
