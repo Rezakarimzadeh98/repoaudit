@@ -101,6 +101,7 @@ test("recognizes well-formed pyproject.toml packaging metadata", async () => {
   assert.ok(pyprojectCheck);
   assert.equal(pyprojectCheck?.severity, "pass");
   assert.match(pyprojectCheck?.message ?? "", /5\/5/i);
+  assert.match(pyprojectCheck?.message ?? "", /PEP 621/i);
 });
 
 test("warns when required pyproject metadata fields are missing", async () => {
@@ -128,6 +129,31 @@ test("warns when required pyproject metadata fields are missing", async () => {
   assert.match(pyprojectCheck?.message ?? "", /missing required metadata field/i);
   assert.match(pyprojectCheck?.message ?? "", /description/i);
   assert.match(pyprojectCheck?.message ?? "", /requires-python/i);
+});
+
+test("classifies Poetry pyproject metadata source", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "README.md"),
+    "# Demo\n\n## Install\n\npip install .\n\n## Usage\n\nRun the package.\n",
+  );
+  await writeFile(
+    path.join(root, "LICENSE"),
+    "MIT License\npermission is hereby granted, free of charge\n",
+  );
+  await writeFile(
+    path.join(root, "pyproject.toml"),
+    `[tool.poetry]\nname = "demo"\ndescription = "Poetry package"\nlicense = "MIT"\nreadme = "README.md"\n\n[tool.poetry.dependencies]\npython = ">=3.10"\n`,
+  );
+
+  const report = await runAudit({ root, ...opts });
+  const pyprojectCheck = report.results.find(
+    (r) => r.id === "packaging.python.pyproject",
+  );
+
+  assert.ok(pyprojectCheck);
+  assert.equal(pyprojectCheck?.severity, "pass");
+  assert.match(pyprojectCheck?.message ?? "", /Poetry/i);
 });
 
 test("detects a tracked .env file as a failure", async () => {
