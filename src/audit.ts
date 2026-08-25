@@ -27,7 +27,10 @@ export async function runAudit(options: AuditOptions): Promise<AuditReport> {
   const config = await loadRepoAuditConfig(options.root);
 
   const groups = await Promise.all([
-    checkDocs(options.root),
+    checkDocs(options.root, {
+      checkLinks: options.checkLinks === true,
+      offline: options.offline === true,
+    }),
     checkLicense(options.root),
     checkSecurity(options.root),
     checkCi(options.root),

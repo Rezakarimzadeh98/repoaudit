@@ -22,6 +22,8 @@ Options:
   --json         JSON report (includes score + categories)
   --md           Markdown report (great for PR comments)
   --strict       Treat warnings as failures
+  --check-links  Check README http/https links (network)
+  --offline      Skip optional network checks
   --no-color     Disable ANSI colors
   -h, --help     Show help
 
@@ -59,6 +61,8 @@ function parseArgs(argv: string[]) {
     json: flags.has("--json"),
     markdown: flags.has("--md") || flags.has("--markdown"),
     strict: flags.has("--strict"),
+    checkLinks: flags.has("--check-links"),
+    offline: flags.has("--offline"),
     noColor: flags.has("--no-color"),
     root: path.resolve(
       command === "audit"

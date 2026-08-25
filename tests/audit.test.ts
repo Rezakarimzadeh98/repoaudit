@@ -12,6 +12,8 @@ const opts = {
   markdown: false,
   strict: false,
   noColor: true,
+  checkLinks: false,
+  offline: false,
 };
 
 async function makeTempRepo(): Promise<string> {
@@ -448,4 +450,51 @@ test("secret scan budget is applied after ignored paths are filtered", async () 
   const report = await runAudit({ root, ...opts });
   const secrets = report.results.find((r) => r.id === "security.secret_patterns");
   assert.equal(secrets?.severity, "fail");
+});
+
+test("checks README links with mocked fetch when --check-links is enabled", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "README.md"),
+    "# Demo\n\nSee [ok](https://ok.example.dev) and [bad](https://bad.example.dev).\n",
+  );
+  await writeFile(path.join(root, "LICENSE"), "MIT License\n");
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: URL | RequestInfo, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const method = init?.method ?? "GET";
+
+    if (url.includes("ok.example.dev") && method === "HEAD") {
+      return new Response("", { status: 200 });
+    }
+    if (url.includes("bad.example.dev") && method === "HEAD") {
+      return new Response("", { status: 404 });
+    }
+
+    return new Response("", { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    const report = await runAudit({ root, ...opts, checkLinks: true });
+    const links = report.results.find((r) => r.id === "docs.readme.links");
+    assert.equal(links?.severity, "warn");
+    assert.match(links?.message ?? "", /unreachable README link/i);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("skips README link checks with --offline", async () => {
+  const root = await makeTempRepo();
+  await writeFile(
+    path.join(root, "README.md"),
+    "# Demo\n\nSee [site](https://example.dev).\n",
+  );
+  await writeFile(path.join(root, "LICENSE"), "MIT License\n");
+
+  const report = await runAudit({ root, ...opts, checkLinks: true, offline: true });
+  const links = report.results.find((r) => r.id === "docs.readme.links");
+  assert.equal(links?.severity, "info");
+  assert.match(links?.message ?? "", /due to --offline/i);
 });
