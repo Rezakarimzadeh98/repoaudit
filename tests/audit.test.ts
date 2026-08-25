@@ -284,6 +284,64 @@ test("does not flag UI password copy as a secret", async () => {
   assert.equal(secrets?.severity, "pass");
 });
 
+  test("detects valid SPDX expression from package.json string", async () => {
+    const root = await makeTempRepo();
+    await writeFile(path.join(root, "README.md"), "# Demo\n");
+    await writeFile(path.join(root, "LICENSE"), "MIT License\n");
+    await writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "demo", license: "MIT OR Apache-2.0" }),
+    );
+
+    const report = await runAudit({ root, ...opts });
+    const spdxCheck = report.results.find((r) => r.id === "license.spdx.package");
+    assert.equal(spdxCheck?.severity, "pass");
+  });
+
+  test("detects valid SPDX expression from package.json license object", async () => {
+    const root = await makeTempRepo();
+    await writeFile(path.join(root, "README.md"), "# Demo\n");
+    await writeFile(path.join(root, "LICENSE"), "MIT License\n");
+    await writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "demo", license: { type: "Apache-2.0" } }),
+    );
+
+    const report = await runAudit({ root, ...opts });
+    const spdxCheck = report.results.find((r) => r.id === "license.spdx.package");
+    assert.equal(spdxCheck?.severity, "pass");
+  });
+
+  test("warns on invalid SPDX expression in package.json", async () => {
+    const root = await makeTempRepo();
+    await writeFile(path.join(root, "README.md"), "# Demo\n");
+    await writeFile(path.join(root, "LICENSE"), "MIT License\n");
+    await writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "demo", license: "UNLICENSED" }),
+    );
+
+    const report = await runAudit({ root, ...opts });
+    const spdxCheck = report.results.find((r) => r.id === "license.spdx.package");
+    assert.equal(spdxCheck?.severity, "warn");
+    assert.match(spdxCheck?.message ?? "", /not a valid SPDX expression/i);
+  });
+
+  test("detects SPDX header in source files", async () => {
+    const root = await makeTempRepo();
+    await writeFile(path.join(root, "README.md"), "# Demo\n");
+    await writeFile(path.join(root, "LICENSE"), "MIT License\n");
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await writeFile(
+      path.join(root, "src", "index.ts"),
+      "// SPDX-License-Identifier: MIT\nexport const x = 1;\n",
+    );
+
+    const report = await runAudit({ root, ...opts });
+    const spdxHeaderCheck = report.results.find((r) => r.id === "license.spdx.header");
+    assert.equal(spdxHeaderCheck?.severity, "pass");
+  });
+
 test("detects pull request templates stored under .github/PULL_REQUEST_TEMPLATE", async () => {
   const root = await makeTempRepo();
   await mkdir(path.join(root, ".github", "PULL_REQUEST_TEMPLATE"), { recursive: true });
