@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/Rezakarimzadeh98/repoaudit/discussions
+    about: Usage questions, check ideas, and roadmap discussion.
+  - name: Security policy
+    url: https://github.com/Rezakarimzadeh98/repoaudit/blob/main/SECURITY.md
+    about: Report vulnerabilities privately according to the policy.
