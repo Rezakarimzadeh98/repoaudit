@@ -17,6 +17,8 @@ Publishing a repo is easy. Making it look trustworthy is not.
 
 `repoaudit` gives you a **0–100 readiness score**, a letter grade, and actionable findings across docs, license, security, CI, packaging, and community hygiene. Use it before you go public, in PR checks, or when reviewing someone else's project.
 
+Global growth and contributor funnel plan: [docs/GO_GLOBAL.md](docs/GO_GLOBAL.md)
+
 ### Live demo
 
 ![repoaudit demo](docs/demo.svg)
