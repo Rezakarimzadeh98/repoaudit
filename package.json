@@ -53,7 +53,7 @@
     "node": ">=18"
   },
   "devDependencies": {
-    "@types/node": "^22.13.10",
+    "@types/node": "^26.4.1",
     "@types/spdx-expression-parse": "^4.0.0",
     "tsx": "^4.23.13",
     "typescript": "^5.8.2"
